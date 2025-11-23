@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotions in Transit | Bioma Urbano</title>
+    
+    <style>
+        /* Estilos CSS integrados para limpieza visual */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Evita que aparezcan barras de scroll */
+            background-color: #000; /* Fondo negro mientras carga */
+        }
+        canvas {
+            display: block; /* Elimina bordes extraños en el canvas */
+        }
+    </style>
+
+    <!-- 1. Cargar Librería p5.js (Motor Gráfico) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+
+    <!-- 2. Cargar Scripts del Proyecto (Modularidad) -->
+    <!-- Usamos 'defer' para asegurar que carguen en orden y no bloqueen la página -->
+    
+    <!-- Primero la Clase: Define qué es una partícula -->
+    <script src="/js/visual/Particle.js" defer></script>
+    
+    <!-- Luego el Sketch: Define cómo se dibuja todo (setup/draw) -->
+    <script src="/js/sketch.js" defer></script>
+</head>
+<body>
+    <!-- p5.js inyectará automáticamente el <canvas> aquí al cargar -->
+</body>
+</html>
