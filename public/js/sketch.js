@@ -1,34 +1,38 @@
 let currentData = null;
-let particles = []; // Array para las partículas
+let particles = []; 
+let audioEngine; // <--- VARIABLE NUEVA PARA EL AUDIO
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   
-  // Pedimos datos inmediatamente y luego cada 5 segundos
+  // Inicializamos el motor de audio (pero aún no suena)
+  audioEngine = new AudioEngine();
+
   fetchData();
   setInterval(fetchData, 5000);
 }
 
 function draw() {
-  // Fondo oscuro con transparencia para dejar estela (efecto visual)
   background(30, 30, 30, 200); 
 
   if (currentData) {
-    // --- 1. GENERACIÓN DE PARTÍCULAS ---
-    // MobilityIndex (0 a 1) controla cuántas nacen.
+    // --- ACTUALIZAR AUDIO ---
+    // Le enviamos los datos al músico digital
+    audioEngine.updateFromData(currentData);
+
+    // --- GENERACIÓN DE PARTÍCULAS ---
     let spawnCount = map(currentData.mobilityIndex, 0, 1, 1, 5);
     
     if (random(1) < spawnCount) {
-        // Creamos la partícula usando la temperatura para el color
         let p = new Particle(width / 2, height / 2, currentData.tempIndex);
         particles.push(p);
     }
 
-    // --- 2. FUERZA DEL VIENTO ---
+    // --- FUERZA DEL VIENTO ---
     let windStrength = map(currentData.windIndex, 0, 1, 0, 0.5);
-    let wind = createVector(windStrength, 0); // Viento hacia la derecha
+    let wind = createVector(windStrength, 0); 
 
-    // --- 3. ACTUALIZAR PARTÍCULAS ---
+    // --- CICLO DE VIDA PARTÍCULAS ---
     for (let i = particles.length - 1; i >= 0; i--) {
       let p = particles[i];
       p.applyForce(wind);
@@ -40,7 +44,6 @@ function draw() {
       }
     }
 
-    // --- 4. DATOS EN PANTALLA ---
     drawHUD();
   } else {
     fill(255);
@@ -56,6 +59,17 @@ function drawHUD() {
     textSize(14);
     text(`Temp Index: ${currentData.tempIndex.toFixed(2)}`, 20, 30);
     text(`Partículas: ${particles.length}`, 20, 50);
+    
+    // Mensaje para que el usuario sepa que debe hacer clic
+    textAlign(CENTER);
+    text("Haz CLIC en la pantalla para activar el sonido", width/2, height - 50);
+}
+
+// --- EVENTO DE CLIC PARA INICIAR AUDIO ---
+function mousePressed() {
+    if (audioEngine) {
+        audioEngine.start();
+    }
 }
 
 async function fetchData() {

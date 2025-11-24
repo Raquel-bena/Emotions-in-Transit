@@ -18,19 +18,12 @@
         }
     </style>
 
-    <!-- 1. Cargar Librería p5.js (Motor Gráfico) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
-    <!-- 2. Cargar Scripts del Proyecto (Modularidad) -->
-    <!-- Usamos 'defer' para asegurar que carguen en orden y no bloqueen la página -->
-    
-    <!-- Primero la Clase: Define qué es una partícula -->
-    <script src="/js/visual/Particle.js" defer></script>
-    
-    <!-- Luego el Sketch: Define cómo se dibuja todo (setup/draw) -->
-    <script src="/js/sketch.js" defer></script>
+    <script src="js/visual/Particle.js"></script>
+    <script src="js/audio/AudioEngine.js"></script> <script src="js/sketch.js"></script>
 </head>
 <body>
-    <!-- p5.js inyectará automáticamente el <canvas> aquí al cargar -->
-</body>
+    </body>
 </html>
