@@ -47,58 +47,72 @@ function draw() {
 // --- LÓGICA DE VISUALIZACIÓN ---
 
 function drawNetwork() {
-  // Grosor de línea fino para estética de datos
+  // EFECTO DE BRILLO (NEÓN)
+  // Esto hace que todo lo que se dibuje después tenga un halo de luz
+  drawingContext.shadowBlur = 15; 
+  drawingContext.shadowColor = color(red(baseColor), green(baseColor), blue(baseColor));
+
   strokeWeight(1);
   
-  // Recorremos todas las partículas
   for (let i = 0; i < particles.length; i++) {
     let p = particles[i];
     
-    // 1. ACTUALIZAR: Movemos la partícula (la clase DataParticle está en el otro archivo)
-    // Le pasamos la velocidad del viento calculada desde la API
+    // Actualizar y Dibujar
     p.update(windSpeed);
-    
-    // 2. DIBUJAR: Dibujamos el punto
-    // Le pasamos el color calculado según la temperatura
     p.display(baseColor);
     
-    // 3. CONECTAR: Buscamos puntos cercanos para dibujar líneas
-    // Esto crea la estética de "constelación" o "red neuronal"
+    // Conectar puntos (Red Neuronal)
     for (let j = i + 1; j < particles.length; j++) {
       let other = particles[j];
       let d = dist(p.x, p.y, other.x, other.y);
       
-      // Si la distancia es menor a 100 píxeles, dibujamos una línea
-      if (d < 100) { 
-        // La transparencia (alpha) depende de la distancia: más lejos = más transparente
-        let alpha = map(d, 0, 100, 200, 0);
+      // Aumentamos la distancia de conexión a 120 para ver más líneas
+      if (d < 120) { 
+        let alpha = map(d, 0, 120, 150, 0); // Transparencia variable
         stroke(red(baseColor), green(baseColor), blue(baseColor), alpha);
         line(p.x, p.y, other.x, other.y);
       }
     }
   }
+  
+  // Resetear el efecto de brillo para que no afecte al texto del HUD
+  drawingContext.shadowBlur = 0;
 }
 
 function drawHUD() {
-  // Panel de información en pantalla (Estilo Cyberpunk/Terminal)
   noStroke();
-  fill(0, 255, 100); // Verde neón para el título
+  
+  // Fondo semitransparente detrás del texto para que se lea mejor
+  fill(0, 150);
+  rect(10, 10, 250, 130, 5); // Caja de fondo con bordes redondeados
+
+  // Título
+  fill(0, 255, 100); // Verde Terminal
   textAlign(LEFT, TOP);
   textSize(14);
-  text(`:: EMOTIONS IN TRANSIT :: BCN LIVE DATA`, 20, 20);
+  textStyle(BOLD);
+  text(`:: EMOTIONS IN TRANSIT ::`, 25, 25);
   
-  fill(255); // Blanco para los datos
+  // Línea divisoria decorativa
+  stroke(0, 255, 100);
+  line(25, 45, 200, 45);
+  noStroke();
+
+  // Datos
+  fill(220); // Blanco suave
+  textStyle(NORMAL);
   textSize(12);
   
-  // Mostramos los datos reales recibidos
-  text(`TEMP: ${weatherData.main.temp}°C`, 20, 50);
-  text(`HUMEDAD: ${weatherData.main.humidity}%`, 20, 70);
-  text(`VIENTO: ${weatherData.wind.speed} m/s`, 20, 90);
+  // Usamos toFixed(1) para que no salgan muchos decimales
+  text(`> CLIMA: BCN LIVE FEED`, 25, 60);
+  text(`  TEMP: ${weatherData.main.temp.toFixed(1)}°C`, 25, 80);
+  text(`  HUMEDAD: ${weatherData.main.humidity}%`, 25, 100);
+  text(`> MOVILIDAD (BICING)`, 25, 120);
   
-  // Calculamos el total de bicis para mostrarlo
+  // Calculamos bicis de nuevo para mostrar el dato
   let totalBikes = 0;
   bikeData.network.stations.forEach(s => totalBikes += s.free_bikes);
-  text(`BICIS DISPONIBLES (BCN): ${totalBikes}`, 20, 120);
+  text(`  UNIDADES ACTIVAS: ${totalBikes}`, 25, 140);
 }
 
 function drawLoadingScreen() {
