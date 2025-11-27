@@ -6,15 +6,16 @@
     <title>Emotions in Transit | Bioma Urbano</title>
     
     <style>
-        /* Estilos CSS integrados para limpieza visual */
+        /* Estilos CSS para limpieza visual y modo inmersivo */
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Evita que aparezcan barras de scroll */
-            background-color: #000; /* Fondo negro mientras carga */
+            overflow: hidden; /* Evita barras de scroll */
+            background-color: #000; /* Fondo negro de seguridad */
+            font-family: 'Courier New', Courier, monospace; /* Fuente estilo datos/terminal */
         }
         canvas {
-            display: block; /* Elimina bordes extraños en el canvas */
+            display: block; /* Elimina márgenes extraños del canvas */
         }
     </style>
 
@@ -22,7 +23,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <script src="js/visual/Particle.js"></script>
-    <script src="js/audio/AudioEngine.js"></script> <script src="js/sketch.js"></script>
+    <script src="js/visual/Pulse.js"></script> <script src="js/audio/AudioEngine.js"></script>
+
+    <script src="js/sketch.js"></script>
 </head>
 <body>
     </body>
