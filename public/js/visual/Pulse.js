@@ -1,6 +1,6 @@
-// Archivo: js/visual/Pulse.js
+// public/js/visual/Pulse.js
 
-class Pulse {
+class EmotionPulse {
   constructor(x, y, color) {
     this.x = x;
     this.y = y;
@@ -9,19 +9,21 @@ class Pulse {
     this.alpha = 255;
     this.color = color;
     this.speed = random(2, 5);
-    this.dead = false; // Para saber cuándo eliminarlo
+    this.dead = false;
   }
 
   update() {
     this.size += this.speed;
-    this.alpha -= 3; // Desvanecer poco a poco
+    this.alpha = max(0, this.alpha - 3); // Evita valores negativos
 
-    if (this.alpha <= 0) {
+    if (this.alpha <= 0 || this.size > this.maxSize) {
       this.dead = true;
     }
   }
 
   display() {
+    if (this.dead) return;
+
     noFill();
     strokeWeight(2);
     stroke(red(this.color), green(this.color), blue(this.color), this.alpha);

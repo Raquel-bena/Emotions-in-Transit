@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Emotions in Transit: Visualización interactiva de emociones urbanas en tiempo real.">
     <title>Emotions in Transit | Bioma Urbano</title>
-    
+
     <style>
-        /* Estilos CSS para limpieza visual y modo inmersivo */
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Evita barras de scroll */
-            background-color: #000; /* Fondo negro de seguridad */
-            font-family: 'Courier New', Courier, monospace; /* Fuente estilo datos/terminal */
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
         }
         canvas {
-            display: block; /* Elimina márgenes extraños del canvas */
+            display: block;
         }
     </style>
 
+    <!-- Cargar librerías sin espacios innecesarios -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
+    <!-- Ordenar scripts: primero clases, luego sketch principal -->
     <script src="js/visual/Particle.js"></script>
-    <script src="js/visual/Pulse.js"></script> <script src="js/audio/AudioEngine.js"></script>
-
+    <script src="js/visual/Pulse.js"></script>
+    <script src="js/audio/AudioEngine.js"></script>
     <script src="js/sketch.js"></script>
 </head>
 <body>
-    </body>
+    <!-- Opcional: mensaje de carga para experiencia de usuario -->
+    <div id="loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white;">Cargando...</div>
+</body>
 </html>
