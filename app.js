@@ -1,64 +1,35 @@
-// app.js - Emotions in Transit Server (Backend Seguro)
-
+require('dotenv').config(); // Cargar variables de entorno
 const express = require('express');
-const axios = require('axios'); // Herramienta para pedir datos
 const path = require('path');
-const dotenv = require('dotenv');
+const DataEngine = require('./backend/services/dataNormalizer'); // Importar tu motor
 
-// Configuración
-dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// --- CLAVES SECRETAS (Solo viven en el servidor) ---
-const WEATHER_API_KEY = '9d75f91e440ba31b532d442cf7e383d1'; 
-const CITY_ID = '3128760'; // Barcelona
+// Inicializar el Motor de Datos AEMET
+const dataEngine = new DataEngine();
+dataEngine.startPolling(); // Empieza a buscar datos automáticamente
 
-// --- MIDDLEWARE ---
+// Servir archivos estáticos (tu web)
 app.use(express.static('public'));
-app.use('/process', express.static(path.join(__dirname, 'prototypes')));
 
-// --- API PROPIA (Puente de Seguridad) ---
-
-// 1. Ruta para el Clima
-app.get('/api/weather', async (req, res) => {
-    try {
-        const url = `https://api.openweathermap.org/data/2.5/weather?id=${CITY_ID}&appid=${WEATHER_API_KEY}&units=metric`;
-        const response = await axios.get(url);
-        res.json(response.data); // Enviamos los datos limpios al frontend
-    } catch (error) {
-        console.error("Error Clima:", error.message);
-        res.status(500).json({ error: "Fallo al obtener clima" });
-    }
+// RUTA API PRINCIPAL
+// El frontend llama a esto para obtener los datos normalizados
+app.get('/api/weather', (req, res) => {
+    const data = dataEngine.getCurrentState();
+    res.json(data);
 });
 
-// 2. Ruta para el Bicing
-app.get('/api/bicing', async (req, res) => {
-    try {
-        const url = 'https://api.citybik.es/v2/networks/bicing';
-        const response = await axios.get(url);
-        res.json(response.data);
-    } catch (error) {
-        console.error("Error Bicing:", error.message);
-        res.status(500).json({ error: "Fallo al obtener bicing" });
-    }
+// Ruta Bicing (Mockup/Simulación por ahora)
+app.get('/api/bicing', (req, res) => {
+    // Simulamos datos de estaciones
+    res.json({
+        network: {
+            stations: Array(50).fill({ free_bikes: Math.floor(Math.random() * 20) })
+        }
+    });
 });
 
-// --- MANTENIMIENTO (Evita que Render se duerma) ---
-app.get('/health', (req, res) => res.send('Vivo'));
-
-function keepAlive() {
-    if (process.env.RENDER_EXTERNAL_URL) {
-        console.log("Ping de mantenimiento para evitar sueño...");
-        axios.get(`${process.env.RENDER_EXTERNAL_URL}/health`)
-            .catch(() => console.log("Error en keep-alive (ignorar si arranca)"));
-    }
-}
-// Hace un ping cada 14 minutos (Render duerme a los 15 min)
-setInterval(keepAlive, 14 * 60 * 1000);
-
-// --- ARRANCAR SERVIDOR ---
-app.listen(PORT, () => {
-    console.log(`\n🚀 EMOTIONS IN TRANSIT LISTO`);
-    console.log(`> Servidor en puerto: ${PORT}`);
+app.listen(port, () => {
+    console.log(`Servidor escuchando en http://localhost:${port}`);
 });
