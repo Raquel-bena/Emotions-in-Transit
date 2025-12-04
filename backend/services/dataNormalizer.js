@@ -1,5 +1,5 @@
 /**
- * MOTOR DE DATOS (Data Engine) - VERSIÓN AEMET CORREGIDA PARA RENDER
+ * MOTOR DE DATOS (Data Engine) - VERSIÓN OPENWEATHERMAP
  * Ubicación: backend/services/dataNormalizer.js
  */
 const axios = require('axios');
@@ -14,8 +14,8 @@ class DataEngine {
             timestamp: Date.now()
         };
         this.bounds = {
-            temp: { min: 0, max: 35 },
-            wind: { min: 0, max: 60 }
+            temp: { min: -10, max: 40 }, // Rango realista para Barcelona
+            wind: { min: 0, max: 60 }    // km/h
         };
         this.timer = null;
     }
@@ -38,12 +38,11 @@ class DataEngine {
     }
 
     async fetchWeatherData() {
-        const apiKey = process.env.AEMET_API_KEY;
+        const apiKey = process.env.OWM_KEY; // Clave de OpenWeatherMap
         let nextInterval = 900000; // 15 minutos por defecto
 
-        // Si no hay clave, usar modo simulado
         if (!apiKey) {
-            console.warn("⚠️ [DataEngine] AEMET_API_KEY no definida. Usando modo simulado.");
+            console.warn("⚠️ [DataEngine] OWM_KEY no definida. Usando modo simulado.");
             this.currentState = {
                 tempIndex: 0.5,
                 windIndex: 0.2,
@@ -51,55 +50,37 @@ class DataEngine {
                 mobilityIndex: this.calculateMobilityFactor(),
                 timestamp: Date.now()
             };
-            return this.scheduleNextUpdate(60000);
+            return this.scheduleNextUpdate(60000); // Reintentar en 1 minuto
         }
 
         try {
-            // ✅ CORRECCIÓN CRÍTICA: api_key debe ir en los HEADERS
-            const step1 = await axios.get(
-                'https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/horaria/08019/',
-                { headers: { api_key: apiKey } }
-            );
+            // ✅ Llamada directa a OpenWeatherMap (Barcelona, ID 3128740)
+            const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
+            const response = await axios.get(url);
 
-            if (step1.data.estado !== 200 || !step1.data.datos) {
-                throw new Error(`AEMET error: ${step1.data.descripcion || 'Sin URL de datos'}`);
-            }
+            const data = response.data;
 
-            const dataUrl = step1.data.datos;
-            const weatherRes = await axios.get(dataUrl);
+            // Extraer datos
+            const tempVal = data.main.temp; // Temperatura en °C
+            const windVal = data.wind.speed; // Velocidad del viento en m/s → convertir a km/h
+            const weatherDesc = data.weather[0].description.toLowerCase();
 
-            // ✅ Validación robusta
-            const data = weatherRes.data;
-            if (!Array.isArray(data) || data.length === 0) {
-                throw new Error("AEMET: datos vacíos o mal formateados");
-            }
+            // Convertir viento de m/s a km/h
+            const windKmH = windVal * 3.6;
 
-            const day = data[0].prediccion?.dia?.[0];
-            if (!day) {
-                throw new Error("AEMET: falta campo 'prediccion.dia'");
-            }
+            // Calcular índices
+            this.currentState.tempIndex = this.normalize(tempVal, this.bounds.temp.min, this.bounds.temp.max);
+            this.currentState.windIndex = this.normalize(windKmH, this.bounds.wind.min, this.bounds.wind.max);
+            this.currentState.rainIndex = weatherDesc.includes('rain') || weatherDesc.includes('storm') ? 0.8 : 0.0;
+            this.currentState.mobilityIndex = this.calculateMobilityFactor();
+            this.currentState.timestamp = Date.now();
 
-            const tempVal = parseInt(day.temperatura?.[0]?.value, 10) || 20;
-            let windVal = 10;
-            if (day.vientoAndRachaMax?.[0]?.velocidad?.[0]?.value) {
-                windVal = parseInt(day.vientoAndRachaMax[0].velocidad[0].value, 10);
-            }
-            const skyDesc = (day.estadoCielo?.[0]?.descripcion || '').toUpperCase();
-
-            this.currentState = {
-                tempIndex: this.normalize(tempVal, this.bounds.temp.min, this.bounds.temp.max),
-                windIndex: this.normalize(windVal, this.bounds.wind.min, this.bounds.wind.max),
-                rainIndex: skyDesc.includes('LLUVIA') || skyDesc.includes('TORMENTA') ? 0.8 : 0.0,
-                mobilityIndex: this.calculateMobilityFactor(),
-                timestamp: Date.now()
-            };
-
-            console.log(`✅ [AEMET] Actualizado: ${tempVal}ºC | Viento: ${windVal} km/h | ${skyDesc}`);
+            console.log(`✅ [OWM] Actualizado: ${tempVal}ºC | Viento: ${windKmH.toFixed(1)} km/h | ${weatherDesc}`);
 
         } catch (error) {
             console.error(`❌ [DataEngine] Error:`, error.message || error);
 
-            // Mantener último estado válido, pero actualizar timestamp
+            // Mantener último estado válido
             this.currentState.timestamp = Date.now();
 
             if (error.response?.status === 429) {
@@ -121,11 +102,11 @@ class DataEngine {
 
     startPolling() {
         console.log("🚀 [DataEngine] Iniciando ciclo de datos (modo producción)...");
-        this.fetchWeatherData(); // Llamada inmediata
+        this.fetchWeatherData();
     }
 
     getCurrentState() {
-        return { ...this.currentState }; // Clonar para seguridad
+        return { ...this.currentState };
     }
 }
 
