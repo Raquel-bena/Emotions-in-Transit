@@ -39,8 +39,9 @@ class DataEngine {
 
     async fetchWeatherData() {
         const apiKey = process.env.AEMET_API_KEY;
-        let nextInterval = 900000; // 15 minutos
+        let nextInterval = 900000; // 15 minutos por defecto
 
+        // Si no hay clave, usar modo simulado
         if (!apiKey) {
             console.warn("⚠️ [DataEngine] AEMET_API_KEY no definida. Usando modo simulado.");
             this.currentState = {
@@ -54,7 +55,7 @@ class DataEngine {
         }
 
         try {
-            // ✅ CORRECCIÓN CRÍTICA: api_key debe ir en los HEADERS, no en la URL
+            // ✅ CORRECCIÓN CRÍTICA: api_key debe ir en los HEADERS
             const step1 = await axios.get(
                 'https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/horaria/08019/',
                 { headers: { api_key: apiKey } }
@@ -70,12 +71,12 @@ class DataEngine {
             // ✅ Validación robusta
             const data = weatherRes.data;
             if (!Array.isArray(data) || data.length === 0) {
-                throw new Error("AEMET: datos vacíos");
+                throw new Error("AEMET: datos vacíos o mal formateados");
             }
 
             const day = data[0].prediccion?.dia?.[0];
             if (!day) {
-                throw new Error("AEMET: falta 'prediccion.dia'");
+                throw new Error("AEMET: falta campo 'prediccion.dia'");
             }
 
             const tempVal = parseInt(day.temperatura?.[0]?.value, 10) || 20;
@@ -102,9 +103,11 @@ class DataEngine {
             this.currentState.timestamp = Date.now();
 
             if (error.response?.status === 429) {
-                nextInterval = 120000; // 2 min
+                console.warn("⚠️ [DataEngine] Límite de peticiones (429). Pausando 2 minutos...");
+                nextInterval = 120000; // 2 minutos
             } else {
-                nextInterval = 60000; // 1 min
+                console.warn("⚠️ [DataEngine] Error inesperado. Reintentando en 1 minuto.");
+                nextInterval = 60000; // 1 minuto
             }
         } finally {
             this.scheduleNextUpdate(nextInterval);
@@ -118,11 +121,11 @@ class DataEngine {
 
     startPolling() {
         console.log("🚀 [DataEngine] Iniciando ciclo de datos (modo producción)...");
-        this.fetchWeatherData();
+        this.fetchWeatherData(); // Llamada inmediata
     }
 
     getCurrentState() {
-        return { ...this.currentState };
+        return { ...this.currentState }; // Clonar para seguridad
     }
 }
 
