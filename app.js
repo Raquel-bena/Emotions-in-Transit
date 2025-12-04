@@ -1,31 +1,35 @@
-require('dotenv').config(); 
+require('dotenv').config(); // Cargar variables de entorno
+
 const express = require('express');
+const cors = require('cors'); // <-- Importa CORS
 const path = require('path');
-const cors = require('cors'); // Recomendado añadir si tienes problemas de dominios
-const DataEngine = require('./backend/services/dataNormalizer');
+const DataEngine = require('./backend/services/dataNormalizer'); // Importar tu motor
 
 const app = express();
-// Render asigna un puerto automáticamente en process.env.PORT
-const port = process.env.PORT || 3000; 
+const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// --- 🔥 SOLUCIÓN CRÍTICA: Habilitar CORS ---
+app.use(cors({
+    origin: '*', // Permite cualquier origen (para desarrollo; en producción usa tu dominio)
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type']
+}));
 
-// Servir archivos estáticos (HTML, JS, CSS) de la carpeta public
-app.use(express.static(path.join(__dirname, 'public')));
+// Servir archivos estáticos (tu web)
+app.use(express.static('public'));
 
-// Inicializar Motor
+// Inicializar el Motor de Datos AEMET
 const dataEngine = new DataEngine();
-dataEngine.startPolling();
+dataEngine.startPolling(); // Empieza a buscar datos automáticamente
 
-// API
+// RUTA API PRINCIPAL
 app.get('/api/weather', (req, res) => {
-    res.json(dataEngine.getCurrentState());
+    const data = dataEngine.getCurrentState();
+    res.json(data); // ✅ Asegúrate de que esto devuelve un objeto JSON válido
 });
 
+// Ruta Bicing (Mockup/Simulación por ahora)
 app.get('/api/bicing', (req, res) => {
-    // Mockup para demostración
     res.json({
         network: {
             stations: Array(50).fill({ free_bikes: Math.floor(Math.random() * 20) })
@@ -33,11 +37,6 @@ app.get('/api/bicing', (req, res) => {
     });
 });
 
-// Ruta fallback para SPA (opcional, pero buena práctica)
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 app.listen(port, () => {
-    console.log(`🚀 Servidor Emotions in Transit corriendo en puerto ${port}`);
+    console.log(`Servidor escuchando en http://localhost:${port}`);
 });
