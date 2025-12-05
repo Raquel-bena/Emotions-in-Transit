@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Emotions in Transit: Visualización interactiva.">
+    <title>Emotions in Transit | Bioma Urbano</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+        }
+        #loading {
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* Para que no bloquee clicks si se queda pegado */
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Cargando Bioma Urbano...</div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -4,12 +4,20 @@
   "description": "Bioma emocional urbano",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "p5": "^2.1.1",
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "vite": "^7.2.6"
   }
 }
