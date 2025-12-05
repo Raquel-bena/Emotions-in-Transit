@@ -1,13 +1,7 @@
 /* src/style.css */
-
 body {
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Evita que salgan barras de scroll si te pasas del borde */
-  background-color: #000; /* Fondo negro para evitar flashazos blancos al cargar */
-  font-family: 'Courier New', Courier, monospace; /* Tu fuente tecnológica */
-}
-
-canvas {
-  display: block; /* Elimina un pequeño margen inferior extraño que tienen los canvas */
+  overflow: hidden; /* Elimina las barras de desplazamiento */
+  background-color: #000; /* Fondo negro de seguridad */
 }

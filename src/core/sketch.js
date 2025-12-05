@@ -1,17 +1,16 @@
-import p5 from 'p5';
-// Importamos tus clases (asegúrate de que las rutas sean correctas)
-import { Particle } from '../visual/Particle.js';
-import { EmotionPulse } from '../visual/Pulse.js';
-import { AudioEngine } from '../systems/AudioEngine.js';
+import { Particle } from "../visual/Particle.js";
+import { EmotionPulse } from "../visual/Pulse.js";
+import { AudioEngine } from "../systems/AudioEngine.js";
 
 const sketch = (p) => {
-    // --- VARIABLES DE ESTADO (Ahora son locales, no globales) ---
+    // --- VARIABLES ---
     let particles = [];
     let pulses = [];
     let maxParticles = 200;
     let audioEngine;
-    
-    // Estado del clima (Fallback)
+    let splitX; // Límite de la pantalla dividida
+
+    // Estado del clima (Inicial)
     let weatherState = {
         tempIndex: 0.5,
         windIndex: 0.1,
@@ -21,127 +20,117 @@ const sketch = (p) => {
 
     // --- SETUP ---
     p.setup = () => {
-        // En instance mode usamos p.windowWidth
         p.createCanvas(p.windowWidth, p.windowHeight);
         p.noStroke();
+        
+        // DEFINIR DIVISIÓN: 60% Arte / 40% Datos (Mejor proporción visual)
+        splitX = p.width * 0.6; 
 
-        // 1. Inicializar AudioEngine
         audioEngine = new AudioEngine();
 
-        // 2. Quitar loading (Manipulación del DOM estándar)
+        // Eliminar pantalla de carga
         const loadingDiv = document.getElementById('loading');
         if (loadingDiv) loadingDiv.style.display = 'none';
 
-        // 3. Iniciar ciclo de datos
+        // Iniciar datos simulados o reales
         fetchWeatherData();
-        
-        // Usamos setInterval del navegador, pero referenciamos la función interna
-        setInterval(fetchWeatherData, 10000);
+        setInterval(fetchWeatherData, 5000); // Actualizar cada 5s
     };
 
     // --- DRAW ---
     p.draw = () => {
-        // En instance mode, todas las funciones de p5 llevan "p."
-        p.background(0, 30);
+        p.background(0, 30); // Fondo con estela
 
-        // Actualizar cantidad de partículas
+        // --- ZONA A (IZQUIERDA): ARTE GENERATIVO ---
         updateParticleCount();
 
-        // Partículas
         for (let i = 0; i < particles.length; i++) {
             particles[i].update(weatherState);
-            // IMPORTANTE: Pasamos 'p' para que la partícula sepa dónde dibujar
-            particles[i].display(p); 
-        }
+            particles[i].display(p);
 
-        // Pulsos (Lógica de creación)
-        if (p.random(1) < weatherState.mobilityIndex * 0.05) {
-            createPulse();
-            
-            // Audio trigger
-            if (audioEngine && audioEngine.isStarted && p.random(1) > 0.8) {
-                audioEngine.triggerBusArrival();
+            // [LÓGICA CLAVE] Muro invisible en splitX
+            if (particles[i].pos.x > splitX) {
+                particles[i].pos.x = 0;     // Opción A: Teletransportar al inicio
+                // particles[i].vel.x *= -1; // Opción B: Rebotar (descomentar si prefieres)
             }
         }
 
-        // Pulsos (Render)
-        for (let i = pulses.length - 1; i >= 0; i--) {
-            pulses[i].update();
-            pulses[i].display(p); // Pasamos 'p' aquí también
-            if (pulses[i].dead) pulses.splice(i, 1);
-        }
+        // --- ZONA B (DERECHA): DASHBOARD DE DATOS ---
+        drawDashboard(p);
 
-        // Debug Text
-        drawDebugInfo();
+        // --- LÍNEA DIVISORIA ---
+        p.stroke(255, 100);
+        p.strokeWeight(2);
+        p.line(splitX, 0, splitX, p.height);
+        p.noStroke();
     };
 
-    // --- INTERACCIÓN ---
-    p.mousePressed = () => {
-        if (audioEngine && !audioEngine.isStarted) {
-            audioEngine.start();
-            console.log("🖱️ Clic detectado: Iniciando AudioEngine...");
-        }
-    };
+    // --- FUNCIÓN DEL DASHBOARD ---
+    function drawDashboard(p) {
+        // Fondo del panel (Gris técnico)
+        p.fill(15, 15, 20, 240);
+        p.rect(splitX, 0, p.width - splitX, p.height);
 
-    p.windowResized = () => {
-        p.resizeCanvas(p.windowWidth, p.windowHeight);
-    };
+        let x = splitX + 30; // Margen izquierdo del panel
+        let y = 80;          // Altura inicial
+        let barWidth = (p.width - splitX) - 60; // Ancho dinámico
 
-    // --- FUNCIONES AUXILIARES ---
+        // Título
+        p.fill(255);
+        p.textSize(20);
+        p.textAlign(p.LEFT);
+        p.text("📊 SYSTEM METRICS", x, 50);
 
-    function createPulse() {
-        let x = p.random(p.width);
-        let y = p.random(p.height);
+        // 1. TEMPERATURA (Barra Roja)
+        drawMetric(p, x, y, "Temperatura", weatherState.tempIndex, [255, 80, 80]);
+        
+        // 2. VIENTO (Barra Verde)
+        drawMetric(p, x, y + 80, "Viento / Turbulencia", weatherState.windIndex, [80, 255, 80]);
+        
+        // 3. MOVILIDAD (Barra Azul)
+        drawMetric(p, x, y + 160, "Movilidad Urbana", weatherState.mobilityIndex, [80, 80, 255]);
 
-        let c1 = p.color(0, 200, 255);
-        let c2 = p.color(255, 50, 0);
-        // lerpColor también necesita 'p'
-        let pulseColor = p.lerpColor(c1, c2, weatherState.tempIndex);
-
-        // Pasamos 'p' al constructor si es necesario, o solo al display
-        pulses.push(new EmotionPulse(x, y, pulseColor));
+        // Debug Info extra
+        p.fill(150);
+        p.textSize(12);
+        p.text(`Particles: ${particles.length}`, x, p.height - 50);
+        p.text(`FPS: ${p.frameRate().toFixed(1)}`, x, p.height - 30);
     }
+
+    // Helper para dibujar barras
+    function drawMetric(p, x, y, label, value, color) {
+        p.fill(200);
+        p.textSize(14);
+        p.text(`${label}: ${(value * 100).toFixed(0)}%`, x, y);
+
+        // Barra fondo
+        p.fill(50);
+        p.rect(x, y + 10, (p.width - splitX) - 60, 10, 5);
+
+        // Barra valor
+        p.fill(color[0], color[1], color[2]);
+        let barW = ((p.width - splitX) - 60) * value; 
+        p.rect(x, y + 10, barW, 10, 5);
+    }
+
+    // ... (Mantén tus funciones createPulse, updateParticleCount y fetchWeatherData igual) ...
+    // Solo recuerda en createPulse usar: let x = p.random(splitX); para que los pulsos nazcan en el lado del arte.
 
     function updateParticleCount() {
-        let targetCount = p.map(weatherState.mobilityIndex, 0, 1, 50, maxParticles);
-        
-        if (particles.length < targetCount) {
-            while (particles.length < targetCount) {
-                // Pasamos 'p' al constructor de la partícula
-                particles.push(new Particle(p)); 
-            }
-        } else if (particles.length > targetCount) {
-            particles.splice(0, particles.length - targetCount);
-        }
+       let targetCount = p.map(weatherState.mobilityIndex, 0, 1, 50, maxParticles);
+       if (particles.length < targetCount) {
+           particles.push(new Particle(p)); 
+       } else if (particles.length > targetCount) {
+           particles.splice(0, 1);
+       }
     }
 
-    function drawDebugInfo() {
-        p.fill(255);
-        p.textSize(12);
-        p.textAlign(p.LEFT);
-        p.text(`TEMP: ${weatherState.tempIndex.toFixed(2)}`, 20, 30);
-        p.text(`MOVILIDAD: ${weatherState.mobilityIndex.toFixed(2)}`, 20, 50);
-        p.text(`AUDIO: ${audioEngine && audioEngine.isStarted ? "ON" : "OFF (Click)"}`, 20, 70);
-    }
-
+    // Simulación de datos para que veas las barras moverse YA
     async function fetchWeatherData() {
-        try {
-            // Nota: En desarrollo usamos la URL completa del backend
-            const response = await fetch('http://localhost:3000/api/weather');
-            const data = await response.json();
-
-            if (data) {
-                // Actualizamos el objeto local, no lo sobrescribimos para mantener referencia
-                weatherState.tempIndex = data.tempIndex || 0.5;
-                weatherState.windIndex = data.windIndex || 0.1;
-                weatherState.rainIndex = data.rainIndex || 0;
-                weatherState.mobilityIndex = data.mobilityIndex || 0.5;
-
-                if (audioEngine) audioEngine.updateFromData(weatherState);
-            }
-        } catch (error) {
-            console.warn("Backend no conectado, usando datos simulados.");
-        }
+        // Simulamos variación para que veas el efecto visual
+        weatherState.tempIndex = p.noise(p.millis() * 0.001); 
+        weatherState.windIndex = p.noise(p.millis() * 0.002 + 100);
+        weatherState.mobilityIndex = p.noise(p.millis() * 0.003 + 200);
     }
 };
 
