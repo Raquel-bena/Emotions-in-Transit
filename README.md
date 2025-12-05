@@ -1,43 +1,53 @@
 <div align="center">
 
 # EMOTIONS IN TRANSIT
-### Biometric Data Visualization in Urban Environments
+### Urban Data Visualization & Generative Environment
 
-![Status](https://img.shields.io/badge/Status-MidAssessment_Complete-success)
+![Status](https://img.shields.io/badge/Status-Development-blue)
+![Stack](https://img.shields.io/badge/Stack-Full_Web_Architecture-blueviolet)
 ![Degree](https://img.shields.io/badge/MSc-MDACT_La_Salle-003399)
-![Defense](https://img.shields.io/badge/Defense-Jan_2026-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 <p align="center">
   <img src="docs/assets/banner_render_v2.jpg" alt="Project Visualization Render" width="100%">
 </p>
 
-*A Master Thesis project submitting for the MSc in Digital Arts and Creative Technologies.*
+*A Master Thesis project submitted for the MSc in Digital Arts and Creative Technologies.*
 *Academic Year 2025-2026*
 
-[View Demo Video](https://vimeo.com/your-link) | [Read Full Report (PDF)](docs/report/Final_Thesis.pdf)
+[View Live Demo](http://localhost:5173) | [Read Full Report (PDF)](docs/report/Final_Thesis.pdf)
 
 </div>
 
 ---
 
 ## 📑 Abstract
-*(Must align with EO1 criteria and match the submitted PDF exactly. Max 250 words)*
+*(Project Pivot: From Biometrics to Urban Biomes)*
 
-**Emotions in Transit** investigates the potential of affective computing to re-humanize high-density urban transit zones. Through an interactive installation, the project captures real-time physiological data (GSR and HRV) from commuters to generate a collective, evolving audiovisual organism. By translating invisible stress metrics into fluid visual dynamics, the system creates a feedback loop designed to foster "ambient empathy" among strangers. The research contributes to the field of interactive architecture by proposing a novel framework for bio-driven generative art in public spaces.
+**Emotions in Transit** reinterprets the city of Barcelona as a living organism. Instead of focusing on individual biometrics, this project shifts the lens to the "urban pulse." By aggregating real-time data from public transport (TMB), bicycle usage (Bicing), and meteorology (OpenWeather), the system translates the city's efficiency, chaos, and rhythm into an immersive audiovisual experience.
 
-**Keywords:** *Affective Computing, Generative Design, Urban Interaction, Biometrics, Real-Time Rendering.*
+The project moves away from proprietary software (TouchDesigner) to a scalable **Full-Stack Web Architecture**, demonstrating how open web technologies (`p5.js`, `Tone.js`, `Node.js`) can be used to democratize complex data visualization in public spaces.
+
+**Keywords:** *Urban Computing, Data Visualization, Generative Art, Full-Stack Development, Real-Time APIs.*
 
 ---
 
 ## ⚙️ System Architecture (Data Flow)
 *Visualizing the technical pipeline for Evaluation Objective 3 (Clarity & Structure).*
 
+El sistema ha evolucionado de una conexión serial local a una arquitectura Cliente-Servidor desacoplada.
+
 ```mermaid
 graph LR
-    A[Biometric Sensors] -->|Raw Data via Serial| B(Python Backend)
-    B -->|Noise Filtering & Normalization| C{OSC Bridge}
-    C -->|/biometrics/stress| D[TouchDesigner Visuals]
-    C -->|/biometrics/hrv| E[Ableton Live Audio]
-    D -->|Spout/NDI| F((Projection Mapping))
-    E -->|Audio Out| G((Surround Sound))
+    A[External APIs] -->|Raw JSON| B(Node.js Backend)
+    subgraph "Server Side (Port 3000)"
+    B -->|TMB & OpenWeather| C{Data Normalizer}
+    C -->|Calculated 'Mood'| D[API Endpoint]
+    end
+    
+    subgraph "Client Side (Port 5173)"
+    D -->|Fetch JSON| E[Vite Frontend]
+    E -->|Visual Render| F[p5.js Instance]
+    E -->|Sonification| G[Tone.js Engine]
+    end
+    
