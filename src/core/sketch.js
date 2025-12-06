@@ -44,12 +44,8 @@ function setup() {
   f2.addBinding(state, 'rainIndex', { min: 0, max: 1, label: 'Density (Rain)' });
 
   // 2. AUDIO SETUP
-  reverb = new Tone.Reverb({ decay: 2, wet: 0.2 }).toDestination();
-  filter = new Tone.Filter(800, "lowpass").connect(reverb);
-  synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "square" }, // Sonido más "Digital/Chip"
-    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
-  }).connect(filter);
+  // 2. AUDIO SETUP
+  // Tone.js se inicializará tras la interacción del usuario (en initAudioEngine) para evitar advertencias de AudioContext.
 
   // 3. INICIALIZAR GRID
   initGrid();
@@ -73,7 +69,7 @@ function initGrid() {
     for (let y = 0; y < rows; y++) {
       let px = x * guiParams.gridSize;
       let py = y * guiParams.gridSize;
-      agents.push(new GridAgent(this, px, py, guiParams.gridSize));
+      agents.push(new GridAgent(window, px, py, guiParams.gridSize));
     }
   }
 }
@@ -137,6 +133,14 @@ function updateClock() {
 
 function initAudioEngine() {
   if (isAudioStarted) return;
+  // Inicializar Audio Nodes aquí para cumplir políticas del navegador
+  reverb = new Tone.Reverb({ decay: 2, wet: 0.2 }).toDestination();
+  filter = new Tone.Filter(800, "lowpass").connect(reverb);
+  synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: "square" },
+    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
+  }).connect(filter);
+
   Tone.start().then(() => {
     isAudioStarted = true;
     document.getElementById('welcome-screen').style.display = 'none';
