@@ -53,6 +53,25 @@ function setup() {
   // 4. Pedir Datos del Clima
   getWeatherData();
   setInterval(getWeatherData, 600000);
+
+  // 5. Iniciar Reloj Digital
+  setInterval(updateClock, 1000);
+  updateClock();
+}
+
+// --- CLOCK & DATE ---
+function updateClock() {
+  const now = new Date();
+
+  // Time: HH:MM
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const clockEl = document.getElementById('clock-display');
+  if (clockEl) clockEl.innerText = timeStr;
+
+  // Date: Weekday, Month Day
+  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const dateEl = document.getElementById('date-display');
+  if (dateEl) dateEl.innerText = dateStr.toUpperCase();
 }
 
 // --- AUDIO INIT HANDLER ---
@@ -106,6 +125,7 @@ async function getWeatherData() {
     state.windIndex = data.windIndex;
     state.tempIndex = data.tempIndex;
     state.rainIndex = data.rainIndex;
+    if (data.mobilityIndex !== undefined) state.mobilityIndex = data.mobilityIndex;
 
     // Actualizar UI HTML
     updateDOM(data);
@@ -126,11 +146,16 @@ function updateDOM(data) {
   // Helper para actualizar textos si existen
   const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
 
-  setTxt('location-name', 'Barcelona (En vivo)');
+  setTxt('location-name', 'Barcelona (Live)');
   setTxt('temp-val', (data.tempIndex * 35).toFixed(1) + "°C");
   setTxt('wind-val', (data.windIndex * 50).toFixed(1) + " km/h");
-  setTxt('rain-val', data.rainIndex > 0 ? "Lluvia" : "Seco");
-  setTxt('desc-val', data.weatherDescription || "Despejado");
+  setTxt('rain-val', data.rainIndex > 0 ? "Rain" : "Dry");
+
+  // Mobility (Urban Pulse)
+  const mobility = data.mobilityIndex !== undefined ? Math.round(data.mobilityIndex * 100) : 50;
+  setTxt('mobil-val', mobility + "%");
+
+  setTxt('desc-val', data.weatherDescription || "Clear Sky");
 
   // Status Dot Color
   const dot = document.querySelector('.status-dot');

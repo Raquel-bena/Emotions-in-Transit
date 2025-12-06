@@ -27,24 +27,34 @@
 
     <!-- PANEL DE INFORMACIÓN (Sidebar) -->
     <div id="info-panel">
-      <div style="margin-bottom: 15px; font-size: 0.9rem;">
-        <span class="status-dot"></span> <span id="location-name">Conectando...</span>
+      <div style="margin-bottom: 20px;">
+        <div id="clock-display" style="font-size: 1.2rem; font-weight: bold; color: #fff;">--:--</div>
+        <div id="date-display" style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">---</div>
+        <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 5px;">
+          <span class="status-dot"></span> <span id="location-name">Barcelona (Live)</span>
+        </div>
       </div>
+
       <div class="data-row">
-        <span class="label">Temperatura</span>
+        <span class="label">TEMPERATURE</span>
         <span class="value" id="temp-val">--°C</span>
       </div>
       <div class="data-row">
-        <span class="label">Viento</span>
+        <span class="label">WIND</span>
         <span class="value" id="wind-val">-- km/h</span>
       </div>
       <div class="data-row">
-        <span class="label">Lluvia</span>
+        <span class="label">RAIN</span>
         <span class="value" id="rain-val">--</span>
       </div>
-      <div class="data-row" style="margin-top: 10px; opacity: 0.6;">
-        <span class="label">Estado</span>
-        <span class="value" id="desc-val">...</span>
+      <div class="data-row">
+        <span class="label">MOBILITY</span>
+        <span class="value" id="mobil-val">--%</span>
+      </div>
+
+      <div class="data-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+        <span class="label" style="opacity: 0.5;">STATUS</span>
+        <span class="value" id="desc-val" style="font-size: 0.8rem;">...</span>
       </div>
     </div>
   </div>
