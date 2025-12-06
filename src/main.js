@@ -4,15 +4,15 @@
 import p5 from 'p5';
 
 // 2. Importamos tu diseño (el sketch) como efecto secundario
-// Ya que sketch.js define window.setup y window.draw
-import './core/sketch.js';
+// Solo necesitamos que el código se ejecute y defina window.setup/draw
+import './core/sketch.js'; 
 
 // 3. ESTILOS GLOBALES
+// Asegúrate de que este import no esté comentado si quieres tu CSS
 // import './style.css'; 
 
 // --- INICIALIZACIÓN DEL SISTEMA ---
 // Iniciamos p5 en modo global (buscará setup/draw en window)
-// Al hacer new p5() sin argumentos, busca las funciones globales.
 new p5();
 
 // Log de depuración para confirmar carga
