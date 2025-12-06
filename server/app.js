@@ -25,9 +25,11 @@ app.use(cors({
 }));
 app.use(express.json()); // Parsear JSON bodies
 
-// --- SERVIR ARCHIVOS ESTÁTICOS ---
-// Nota: En desarrollo, Vite sirve el frontend. 
+// --- SERVIR ARCHIVOS ESTÁTICOS (PRODUCCIÓN) ---
+// 1. Servir carpeta pública (assets generales)
 app.use(express.static(path.join(__dirname, '../public')));
+// 2. Servir el Frontend construido (Vite build -> dist)
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // --- INICIALIZACIÓN DEL MOTOR DE DATOS ---
 const dataEngine = new DataEngine();
@@ -35,9 +37,14 @@ const dataEngine = new DataEngine();
 dataEngine.startPolling();
 
 // --- RUTAS API ---
-// Inyectamos la instancia de dataEngine a la ruta de weather
 app.use('/api/weather', weatherRoutes(dataEngine));
 app.use('/api/bicing', bicingRoutes);
+
+// --- RUTA CATCH-ALL PARA SPA (Vite) ---
+// Cualquier petición que no sea API, devuelve index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
 
 // --- MANEJO DE ERRORES GLOBAL ---
 app.use((err, req, res, next) => {

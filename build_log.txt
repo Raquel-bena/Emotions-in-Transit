@@ -1,0 +1,25 @@
+[36mvite v7.2.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mÔ£ô[39m 1286 modules transformed.
+Ô£ù Build failed in 1.19s
+error during build:
+src/main.js (8:7): "default" is not exported by "src/core/sketch.js", imported by "src/main.js".
+file: C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/src/main.js:8:7
+
+ 6: // 2. Importamos tu dise├▒o (el sketch) desde la carpeta core
+ 7: // Aseg├║rate de que tu archivo sketch.js est├® en src/core/sketch.js
+ 8: import sketch from './core/sketch.js';
+           ^
+ 9: 
+10: // 3. ESTILOS GLOBALES
+
+    at getRollupError (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:16956:16)
+    at Module.traceVariable (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:17412:29)
+    at ModuleScope.findVariable (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:15076:39)
+    at Identifier.bind (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:5423:40)
+    at NewExpression.bind (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:2809:28)
+    at VariableDeclarator.bind (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:2813:23)
+    at VariableDeclaration.bind (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:2809:28)
+    at Program.bind (file:///C:/Users/opera/Documents/Code/data-visualization/Emotions-in-Transit/node_modules/rollup/dist/es/shared/node-entry.js:2809:28)

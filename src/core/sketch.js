@@ -4,7 +4,7 @@ import { Particle } from '../visual/Particle.js'; // Importamos tu clase arregla
 // CONFIGURACIÓN
 // NOTA: En Vite, las variables de entorno deben empezar por VITE_ para ser visibles.
 // Si no te funciona el .env, pega tu clave aquí abajo temporalmente entre comillas.
-const API_KEY = import.meta.env.VITE_OWM_KEY || 'PEGA_TU_CLAVE_AQUI_SI_FALLA_ENV'; 
+const API_KEY = import.meta.env.VITE_OWM_KEY || 'PEGA_TU_CLAVE_AQUI_SI_FALLA_ENV';
 const CITY_ID = '3128740'; // Barcelona
 
 let particles = [];
@@ -22,7 +22,7 @@ let state = {
 // --- SETUP ---
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  
+
   // 1. Inicializar Sintetizador (Tone.js)
   // Usamos un sintetizador polifónico para acordes
   synth = new Tone.PolySynth(Tone.Synth, {
@@ -52,7 +52,7 @@ function draw() {
     fill(255);
     textAlign(CENTER);
     textSize(16);
-    text("HAZ CLICK PARA INICIAR LA EXPERIENCIA SONORA", width/2, height/2);
+    text("HAZ CLICK PARA INICIAR LA EXPERIENCIA SONORA", width / 2, height / 2);
   }
 
   // Actualizar y dibujar cada partícula
@@ -60,47 +60,45 @@ function draw() {
     p.update(state);  // Le pasamos el estado del clima
     p.display();      // La dibujamos
   }
-  
+
   // Debug visual del clima
   displayWeatherInfo();
 }
 
 // --- LOGICA DE DATOS ---
+// --- LOGICA DE DATOS ---
 async function getWeatherData() {
-  console.log("📡 Solicitando datos a OpenWeatherMap...");
-  
+  console.log("📡 Solicitando datos a API Local...");
+
   try {
-    // Usamos fetch moderno
-    const url = `https://api.openweathermap.org/data/2.5/weather?id=${CITY_ID}&appid=${API_KEY}&units=metric`;
+    // AHORA: Pedimos datos a NUESTRO backend, que ya los tiene normalizados
+    const url = '/api/weather';
     const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    // El backend nos devuelve el objeto currentState normalizado
     const data = await response.json();
 
-    if (data.cod !== 200) throw new Error(data.message);
+    // -- MAPEAMOS DATOS DEL BACKEND A NUESTRO ESTADO --
+    // El backend ya devuelve índices entre 0 y 1, ¡mucho más fácil!
 
-    weatherData = data;
-    
-    // -- MAPEAMOS DATOS REALES A NUESTRO ESTADO --
-    
-    // Viento: OpenWeather da m/s, lo normalizamos (0 a 20 m/s)
-    state.windIndex = map(data.wind.speed, 0, 20, 0, 1, true);
-    
-    // Temperatura: -5 a 35 grados
-    state.tempIndex = map(data.main.temp, -5, 35, 0, 1, true);
-    
-    // Lluvia: Si hay 'rain' en el objeto, subimos el índice
-    if (data.rain) {
-       state.rainIndex = 0.8; 
-    } else {
-       state.rainIndex = 0.0;
-    }
+    state.windIndex = data.windIndex;     // Ya viene 0-1
+    state.tempIndex = data.tempIndex;     // Ya viene 0-1
+    state.rainIndex = data.rainIndex;     // Ya viene 0-1
 
-    console.log("✅ Datos actualizados:", data.name, data.main.temp + "°C", "Viento idx:", state.windIndex);
-    
+    // Guardamos la descripción para debug o UI
+    if (!weatherData) weatherData = {}; // Inicializar si es null
+    weatherData.main = { temp: (data.tempIndex * 35).toFixed(1) }; // Estimación inversa visual
+    weatherData.wind = { speed: (data.windIndex * 50).toFixed(1) }; // Estimación inversa visual
+    weatherData.description = data.weatherDescription;
+
+    console.log("✅ Datos actualizados (Backend):", data);
+
     // Si el audio está activo, actualizamos el sonido del ambiente aquí
     updateSound();
 
   } catch (error) {
-    console.error("❌ Error API:", error);
+    console.error("❌ Error API Backend:", error);
     // Modo Fallback: Simulación suave si falla la API
     state.windIndex = 0.2;
   }
@@ -112,11 +110,11 @@ function mousePressed() {
     Tone.start();
     isAudioStarted = true;
     console.log("🔊 Audio Context Iniciado");
-    
+
     // Acorde de bienvenida
     synth.triggerAttackRelease(["C4", "E4", "G4"], "1n");
   }
-  
+
   // Interactividad extra: ráfaga de viento al hacer clic
   state.windIndex = 1.0;
   setTimeout(() => { state.windIndex = map(weatherData?.wind?.speed || 5, 0, 20, 0, 1); }, 1000);
