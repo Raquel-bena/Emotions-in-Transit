@@ -14,7 +14,7 @@ const BOUNDS = {
 class DataEngine {
     constructor() {
         // Estado inicial neutro
-        this.currentState = { 
+        this.currentState = {
             tempIndex: 0.5,
             windIndex: 0.1,
             rainIndex: 0.0,
@@ -22,7 +22,7 @@ class DataEngine {
             timestamp: Date.now(),
             weatherDescription: 'waiting for data...'
         };
-        
+
         this.timer = null;
         this.isPolling = false;
     }
@@ -75,7 +75,7 @@ class DataEngine {
     async fetchWeatherData() {
         const apiKey = process.env.OWM_KEY;
         // Intervalo base: 15 minutos (OpenWeatherMap actualiza cada 10-20 min)
-        let nextInterval = 15 * 60 * 1000; 
+        let nextInterval = 15 * 60 * 1000;
 
         if (!apiKey) {
             console.warn("⚠️ [DataEngine] Sin API KEY. Ejecutando en MODO SIMULACIÓN.");
@@ -123,16 +123,16 @@ class DataEngine {
 
         } catch (error) {
             console.error(`❌ [DataEngine] Error al obtener datos:`, error.message);
-            
+
             // Gestión de Rate Limiting (Error 429)
             if (error.response && error.response.status === 429) {
                 console.warn("⏳ [DataEngine] Límite de API excedido. Pausando 5 minutos...");
-                nextInterval = 5 * 60 * 1000; 
+                nextInterval = 5 * 60 * 1000;
             } else {
                 // Si falla por internet u otro error, reintentar pronto (2 min)
                 nextInterval = 2 * 60 * 1000;
             }
-            
+
             // NOTA: No borramos currentState, mantenemos el último válido para que el frontend no falle.
         } finally {
             this.scheduleNextUpdate(nextInterval);
@@ -144,7 +144,7 @@ class DataEngine {
      */
     simulateData() {
         this.currentState.tempIndex = this.normalize(20 + Math.random() * 5, 0, 40);
-        this.currentState.windIndex = Math.random(); 
+        this.currentState.windIndex = Math.random();
         this.currentState.rainIndex = Math.random() > 0.8 ? 0.5 : 0; // 20% prob de lluvia
         this.currentState.mobilityIndex = this.calculateMobilityFactor();
         this.currentState.timestamp = Date.now();
@@ -175,4 +175,4 @@ class DataEngine {
     }
 }
 
-module.exports = new DataEngine(); // Exportamos una INSTANCIA (Singleton)
+module.exports = DataEngine; // Exportamos la CLASE para que app.js pueda instanciarla
