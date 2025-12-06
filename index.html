@@ -4,62 +4,91 @@
 <head>
   <meta charset="UTF-8">
   <!DOCTYPE html>
+  <!DOCTYPE html>
   <html lang="en">
 
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emotions in Transit</title>
-    <!-- CSS (Vite lo importará vía main.js, pero podemos poner estilos globales si faltan) -->
-  </head>
+    <!-- CSS (Vite lo importará vía main.js, pero podemos poner    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
 
 <body>
   <div id="app"></div>
+  <!-- CONTENEDOR DE LA INTERFAZ -->
+    <div id="ui-layer">
 
-  <!-- UI LAYER -->
-  <div id="ui-layer">
-    <!-- PANTALLA DE BIENVENIDA -->
-    <div id="welcome-screen">
-      <h1>Emotions in Transit</h1>
-      <p class="subtitle">Urban Data Sonification & Visualization</p>
-      <button id="start-btn">Iniciar Experiencia</button>
-    </div>
+      <!-- PANTALLA DE BIENVENIDA (Click to Start) -->
+      <div id="welcome-screen">
+        <h1 class="glitch-text">EMOTIONS IN TRANSIT</h1>
+        <p>A BCN Data Experience</p>
+        <button id="start-btn">INITIALIZE SYSTEM</button>
+      </div>
 
-    <!-- PANEL DE INFORMACIÓN (Sidebar) -->
-    <div id="info-panel">
-      <div style="margin-bottom: 20px;">
-        <div id="clock-display" style="font-size: 1.2rem; font-weight: bold; color: #fff;">--:--</div>
-        <div id="date-display" style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">---</div>
-        <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 5px;">
-          <span class="status-dot"></span> <span id="location-name">Barcelona (Live)</span>
+      <!-- PANEL IZQUIERDO: CLOCK & DATA -->
+      <div id="info-panel" class="hud-panel left-panel">
+        <div class="panel-header">
+          <div id="clock-display">--:--</div>
+          <div id="date-display">LOADING...</div>
+          <div class="live-indicator"><span class="status-dot"></span> BCN LIVE</div>
+        </div>
+
+        <div class="data-grid">
+          <div class="data-item">
+            <span class="label">TEMP</span>
+            <span class="value" id="temp-val">--</span>
+          </div>
+          <div class="data-item">
+            <span class="label">WIND</span>
+            <span class="value" id="wind-val">--</span>
+          </div>
+          <div class="data-item">
+            <span class="label">RAIN</span>
+            <span class="value" id="rain-val">--</span>
+          </div>
+          <div class="data-item highlight">
+            <span class="label">PULSE</span>
+            <span class="value" id="mobil-val">--</span>
+          </div>
+        </div>
+
+        <div class="status-footer">
+          <span class="label">SYSTEM:</span> <span id="desc-val">STANDBY</span>
         </div>
       </div>
 
-      <div class="data-row">
-        <span class="label">TEMPERATURE</span>
-        <span class="value" id="temp-val">--°C</span>
-      </div>
-      <div class="data-row">
-        <span class="label">WIND</span>
-        <span class="value" id="wind-val">-- km/h</span>
-      </div>
-      <div class="data-row">
-        <span class="label">RAIN</span>
-        <span class="value" id="rain-val">--</span>
-      </div>
-      <div class="data-row">
-        <span class="label">MOBILITY</span>
-        <span class="value" id="mobil-val">--%</span>
+      <!-- PANEL DERECHO: LEYENDA -->
+      <div id="legend-panel" class="hud-panel right-panel">
+        <div class="panel-header">VISUAL KEY</div>
+        <ul class="legend-list">
+          <li>
+            <span class="legend-color gradient-temp"></span>
+            <div class="legend-text">
+              <strong>COLOR</strong>
+              <small>Temperature (Warm/Cool)</small>
+            </div>
+          </li>
+          <li>
+            <span class="legend-icon icon-wind">≈</span>
+            <div class="legend-text">
+              <strong>FLOW</strong>
+              <small>Wind Speed & Direction</small>
+            </div>
+          </li>
+          <li>
+            <span class="legend-icon icon-pulse">◉</span>
+            <div class="legend-text">
+              <strong>INTENSITY</strong>
+              <small>Urban Mobility (TMB)</small>
+            </div>
+          </li>
+        </ul>
       </div>
 
-      <div class="data-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-        <span class="label" style="opacity: 0.5;">STATUS</span>
-        <span class="value" id="desc-val" style="font-size: 0.8rem;">...</span>
-      </div>
     </div>
-  </div>
+    <script type="module" src="/src/main.js"></script>
+    </body>
 
-  <script type="module" src="/src/main.js"></script>
-</body>
-
-</html>
+  </html>
