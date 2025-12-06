@@ -1,16 +1,21 @@
 import * as Tone from 'tone';
-import { Particle } from '../visual/Particle.js';
+import { Pane } from 'tweakpane';
+import { GridAgent } from '../visual/Particle.js';
 
 // --- CONFIGURACIÓN GLOBAL ---
-let particles = [];
+let agents = []; // La red de autómatas
+let guiParams = {
+  gridSize: 30, // Tamaño de celda en px
+  showGridLines: true,
+  bloomStrength: 0.5,
+  baseColor: '#0b0c10'
+};
 
 // --- AUDIO VARS ---
-let synth;
-let filter;
-let reverb;
+let synth, filter, reverb;
 let isAudioStarted = false;
 
-// Estado global normalizado (0.0 a 1.0)
+// Estado Data (Normalizado)
 let state = {
   windIndex: 0.1,
   rainIndex: 0.0,
@@ -21,209 +26,129 @@ let state = {
 // --- SETUP ---
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  textFont('Space Mono');
 
-  // 1. Configurar Cadena de Audio (Tone.js)
-  reverb = new Tone.Reverb({
-    decay: 3,
-    wet: 0.2
-  }).toDestination();
+  // 1. SETUP GUI (Tweakpane)
+  const pane = new Pane({ title: 'CONTROL_PANEL // SYS_ADMIN' });
 
-  filter = new Tone.Filter({
-    type: "lowpass",
-    frequency: 400,
-    Q: 1
-  }).connect(reverb);
+  const f1 = pane.addFolder({ title: 'VISUAL_ENGINE' });
+  f1.addBinding(guiParams, 'gridSize', { min: 10, max: 100, step: 5 }).on('change', initGrid);
+  f1.addBinding(guiParams, 'showGridLines');
+  f1.addBinding(guiParams, 'bloomStrength', { min: 0, max: 1 });
+  f1.addBinding(guiParams, 'baseColor');
 
+  const f2 = pane.addFolder({ title: 'DATA_OVERRIDE (Simulation)' });
+  f2.addBinding(state, 'tempIndex', { min: 0, max: 1, label: 'Entropy (Temp)' });
+  f2.addBinding(state, 'windIndex', { min: 0, max: 1, label: 'Vector (Wind)' });
+  f2.addBinding(state, 'mobilityIndex', { min: 0, max: 1, label: 'Metabol (Pulse)' });
+  f2.addBinding(state, 'rainIndex', { min: 0, max: 1, label: 'Density (Rain)' });
+
+  // 2. AUDIO SETUP
+  reverb = new Tone.Reverb({ decay: 2, wet: 0.2 }).toDestination();
+  filter = new Tone.Filter(800, "lowpass").connect(reverb);
   synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "fatsawtooth", count: 3, spread: 30 },
-    envelope: { attack: 0.1, decay: 0.3, sustain: 0.5, release: 2 }
+    oscillator: { type: "square" }, // Sonido más "Digital/Chip"
+    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
   }).connect(filter);
 
-  // 2. Crear Sistema de Partículas (Flow Field Densa)
-  // Aumentamos a 300 para efecto visual rico
-  for (let i = 0; i < 300; i++) {
-    particles.push(new Particle(this));
-  }
+  // 3. INICIALIZAR GRID
+  initGrid();
 
-  // 3. UI HANDLERS
+  // 4. UI HANDLERS
   const startBtn = document.getElementById('start-btn');
-  if (startBtn) {
-    startBtn.addEventListener('click', initAudioEngine);
-  }
+  if (startBtn) startBtn.addEventListener('click', initAudioEngine);
 
-  // 4. Pedir Datos del Clima (Inicial y periódico)
+  // 5. DATOS & RELOJ
   getWeatherData();
-  setInterval(getWeatherData, 600000); // 10 min
-
-  // 5. Iniciar Reloj UI
+  setInterval(getWeatherData, 600000);
   setInterval(updateClock, 1000);
-  updateClock();
 }
 
-// --- CLOCK & DATE ---
-function updateClock() {
-  const now = new Date();
+function initGrid() {
+  agents = [];
+  const cols = Math.floor(width / guiParams.gridSize);
+  const rows = Math.floor(height / guiParams.gridSize);
 
-  // Time: HH:MM
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const clockEl = document.getElementById('clock-display');
-  if (clockEl) clockEl.innerText = timeStr;
-
-  // Date: Weekday, Month Day
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-  const dateEl = document.getElementById('date-display');
-  if (dateEl) dateEl.innerText = dateStr.toUpperCase();
-}
-
-// --- AUDIO INIT HANDLER ---
-function initAudioEngine() {
-  if (isAudioStarted) return;
-
-  Tone.start().then(() => {
-    isAudioStarted = true;
-    console.log("🔊 Audio System Engaged");
-
-    // UI Transitions
-    const welcome = document.getElementById('welcome-screen');
-    const info = document.getElementById('info-panel');
-    const legend = document.getElementById('legend-panel');
-
-    if (welcome) welcome.classList.add('hidden');
-    if (info) info.classList.add('visible');
-    // Mostrar leyenda con un pequeño delay
-    if (legend) setTimeout(() => legend.classList.add('visible'), 500);
-
-    // Sonido de bienvenida
-    triggerAmbientChord();
-  });
-}
-
-// --- DRAW (VISUAL LOOP) ---
-function draw() {
-  // EFECTO DE ESTELA (TRAILS)
-  // Pintamos un rectángulo semitransparente sobre el frame anterior
-  // Esto hace que las partículas dejen trazo.
-
-  // Calculamos color de fondo sutil según temperatura
-  // Low Temp: Deep Blue tint | High Temp: Deep Purple tint
-  let r = map(state.tempIndex, 0, 1, 5, 20);
-  let g = 10;
-  let b = map(state.tempIndex, 0, 1, 20, 10);
-
-  noStroke();
-  fill(r, g, b, 20); // Alpha bajito (20) para estelas largas
-  rect(0, 0, width, height);
-
-  // Actualizar partículas
-  for (let p of particles) {
-    p.update(state);
-    p.display();
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      let px = x * guiParams.gridSize;
+      let py = y * guiParams.gridSize;
+      agents.push(new GridAgent(this, px, py, guiParams.gridSize));
+    }
   }
 }
 
-// --- LOGICA DE DATOS ---
+// --- DRAW ---
+function draw() {
+  background(guiParams.baseColor);
+
+  // Dibujar Grid Lines (Estructural)
+  if (guiParams.showGridLines) {
+    stroke(255, 30);
+    strokeWeight(1);
+    // Verticales
+    for (let x = 0; x <= width; x += guiParams.gridSize) line(x, 0, x, height);
+    // Horizontales
+    for (let y = 0; y <= height; y += guiParams.gridSize) line(0, y, width, y);
+  }
+
+  // Actualizar agetes
+  for (let agent of agents) {
+    agent.update(state);
+    agent.display();
+  }
+}
+
+// --- LOGIC ---
 async function getWeatherData() {
-  console.log("📡 Fetching BCN Data...");
-
+  console.log("Fetching Data...");
   try {
-    const url = '/api/weather';
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-    const data = await response.json();
-
-    // Actualizar Estado Global
-    state.windIndex = data.windIndex || 0.1;
-    state.tempIndex = data.tempIndex || 0.5;
-    state.rainIndex = data.rainIndex || 0.0;
-    state.mobilityIndex = data.mobilityIndex || 0.5;
-
-    // Actualizar UI HTML
-    updateDOM(data);
-
-    console.log("✅ System Updated:", data);
-    updateSound();
-
-  } catch (error) {
-    console.error("❌ Data Sync Failed:", error);
-    const loc = document.getElementById('location-name');
-    if (loc) loc.innerText = "OFFLINE MODE";
+    const res = await fetch('/api/weather');
+    if (res.ok) {
+      const data = await res.json();
+      // Solo actualizamos si NO estamos "sobreescribiendo" manualmente (opcional, por ahora actualizamos siempre)
+      // Para demo en Tweakpane, dejamos que los sliders manden si el usuario toca, pero aquí actualizamos la "base".
+      // Vamos a actualizar UI textual pase lo que pase.
+      updateDOM(data);
+      // Actualizar estado solo si queremos data real
+      state.tempIndex = data.tempIndex;
+      state.windIndex = data.windIndex;
+      // etc (simplificado para priorizar Tweakpane en demo visual, pero lógica real iría aquí)
+    }
+  } catch (e) {
+    console.error(e);
   }
 }
 
 function updateDOM(data) {
-  const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
-
-  setTxt('location-name', 'BARCELONA (LIVE)');
-  setTxt('temp-val', (state.tempIndex * 35).toFixed(1) + "°C");
-  setTxt('wind-val', (state.windIndex * 50).toFixed(1) + " km/h");
-  setTxt('rain-val', state.rainIndex > 0 ? "WET" : "DRY");
-
-  // Mobility
-  const mobilPct = Math.round(state.mobilityIndex * 100);
-  setTxt('mobil-val', mobilPct + "%");
-
-  setTxt('desc-val', (data.weatherDescription || "CLEAR").toUpperCase());
-
-  // Status Dot
-  const dot = document.querySelector('.status-dot');
-  if (dot) {
-    dot.style.backgroundColor = state.rainIndex > 0.5 ? '#00ccff' : '#00ff88';
-    dot.style.boxShadow = `0 0 10px ${dot.style.backgroundColor}`;
-  }
+  // Update HTML Text labels
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+  setTxt('temp-val', (state.tempIndex * 40).toFixed(1) + "°C");
+  setTxt('wind-val', (state.windIndex * 100).toFixed(0) + " km/h");
+  setTxt('mobil-val', Math.round(state.mobilityIndex * 100) + "%");
+  setTxt('rain-val', state.rainIndex > 0.1 ? "HIGH" : "LOW");
 }
 
-// --- SONIFICACIÓN ---
-function updateSound() {
-  if (!isAudioStarted) return;
-
-  // Viento -> Apertura del Filtro
-  let newFreq = map(state.windIndex, 0, 1, 400, 4000);
-  filter.frequency.rampTo(newFreq, 2);
-
-  // Lluvia -> Reverb Wetness
-  let newWet = map(state.rainIndex, 0, 1, 0.1, 0.9);
-  reverb.wet.rampTo(newWet, 2);
-
-  triggerAmbientChord();
+function updateClock() {
+  const d = new Date();
+  const el = document.getElementById('clock-display');
+  if (el) el.innerText = d.toLocaleTimeString('en-GB');
 }
 
-function triggerAmbientChord() {
-  let chord;
-  // Acordes más complejos y ambientales
-  if (state.tempIndex < 0.4) {
-    chord = ["A3", "C4", "E4", "B4"]; // Minor 9
-  } else if (state.tempIndex > 0.7) {
-    chord = ["C4", "E4", "G4", "A4", "D5"]; // Major 6/9
-  } else {
-    chord = ["D4", "G4", "C5", "F5"]; // Quartal / Sus
-  }
-
-  // Duración depende de "Mobility" (más movilidad = notas más cortas/activas)
-  let duration = map(state.mobilityIndex, 0, 1, "1n", "4n");
-  synth.triggerAttackRelease(chord, duration);
-}
-
-// --- INTERACCIÓN ---
-function mousePressed() {
-  if (!isAudioStarted) return;
-  // Interacción sónica simple
-  filter.frequency.rampTo(8000, 0.1);
-  setTimeout(() => {
-    let targetFreq = map(state.windIndex, 0, 1, 400, 4000);
-    filter.frequency.rampTo(targetFreq, 1);
-  }, 500);
+function initAudioEngine() {
+  if (isAudioStarted) return;
+  Tone.start().then(() => {
+    isAudioStarted = true;
+    document.getElementById('welcome-screen').style.display = 'none';
+    synth.triggerAttackRelease(["C3", "E3", "G3"], "8n");
+  });
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  // Recrear sistema al redimensionar
-  particles = [];
-  for (let i = 0; i < 300; i++) particles.push(new Particle(this));
+  initGrid();
 }
 
-// Exponer a global para p5
 window.setup = setup;
 window.draw = draw;
-window.mousePressed = mousePressed;
 window.windowResized = windowResized;

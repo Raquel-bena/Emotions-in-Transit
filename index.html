@@ -1,94 +1,128 @@
-<!DOCTYPE html>
-<html lang="en">
+<div id="welcome-screen">
+  <h1 class="glitch-text">EMOTIONS IN TRANSIT</h1>
+  <p>A BCN Data Experience</p>
+  <button id="start-btn">INITIALIZE SYSTEM</button>
+</div>
 
-<head>
-  <meta charset="UTF-8">
-  <!DOCTYPE html>
+<!-- PANEL IZQUIERDO: CLOCK & DATA -->
+<div id="info-panel" class="hud-panel left-panel">
+  <div class="panel-header">
+    <div id="clock-display">--:--</div>
+    <div id="date-display">LOADING...</div>
+    <div class="live-indicator"><span class="status-dot"></span> BCN LIVE</div>
+  </div>
+
+  <div class="data-grid">
+    <div class="data-item">
+      <span class="label">TEMP</span>
+      <span class="value" id="temp-val">--</span>
+    </div>
+    <div class="data-item">
+      <span class="label">WIND</span>
+      <span class="value" id="wind-val">--</span>
+    </div>
+    <div class="data-item">
+      <span class="label">RAIN</span>
+      <span class="value" id="rain-val">--</span>
+    </div>
+    <div class="data-item highlight">
+      <span class="label">PULSE</span>
+      <span class="value" id="mobil-val">--</span>
+    </div>
+  </div>
   <!DOCTYPE html>
   <html lang="en">
 
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotions in Transit</title>
-    <!-- CSS (Vite lo importará vía main.js, pero podemos poner    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <!DOCTYPE html>
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Emotions in Transit</title>
+      <!-- CSS (Vite lo importará vía main.js, pero podemos poner    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./src/style.css">
 </head>
 
 <body>
   <div id="app"></div>
   <!-- CONTENEDOR DE LA INTERFAZ -->
-    <div id="ui-layer">
+      <div id="ui-layer">
 
-      <!-- PANTALLA DE BIENVENIDA (Click to Start) -->
-      <div id="welcome-screen">
-        <h1 class="glitch-text">EMOTIONS IN TRANSIT</h1>
-        <p>A BCN Data Experience</p>
-        <button id="start-btn">INITIALIZE SYSTEM</button>
-      </div>
-
-      <!-- PANEL IZQUIERDO: CLOCK & DATA -->
-      <div id="info-panel" class="hud-panel left-panel">
-        <div class="panel-header">
-          <div id="clock-display">--:--</div>
-          <div id="date-display">LOADING...</div>
-          <div class="live-indicator"><span class="status-dot"></span> BCN LIVE</div>
+        <!-- PANTALLA DE BIENVENIDA (Click to Start) -->
+        <div id="welcome-screen">
+          <h1 class="glitch-text">EMOTIONS IN TRANSIT</h1>
+          <p>A BCN Data Experience</p>
+          <button id="start-btn">INITIALIZE SYSTEM</button>
         </div>
 
-        <div class="data-grid">
-          <div class="data-item">
-            <span class="label">TEMP</span>
-            <span class="value" id="temp-val">--</span>
+        <!-- PANEL IZQUIERDO: CLOCK & DATA -->
+        <div id="info-panel" class="hud-panel left-panel">
+          <div class="panel-header">
+            <div id="clock-display">--:--</div>
+            <div id="date-display">LOADING...</div>
+            <div class="live-indicator"><span class="status-dot"></span> BCN LIVE</div>
           </div>
-          <div class="data-item">
-            <span class="label">WIND</span>
-            <span class="value" id="wind-val">--</span>
+
+          <div class="data-grid">
+            <div class="data-item">
+              <span class="label">TEMP</span>
+              <span class="value" id="temp-val">--</span>
+            </div>
+            <div class="data-item">
+              <span class="label">WIND</span>
+              <span class="value" id="wind-val">--</span>
+            </div>
+            <div class="data-item">
+              <span class="label">RAIN</span>
+              <span class="value" id="rain-val">--</span>
+            </div>
+            <div class="data-item highlight">
+              <span class="label">PULSE</span>
+              <span class="value" id="mobil-val">--</span>
+            </div>
           </div>
-          <div class="data-item">
-            <span class="label">RAIN</span>
-            <span class="value" id="rain-val">--</span>
-          </div>
-          <div class="data-item highlight">
-            <span class="label">PULSE</span>
-            <span class="value" id="mobil-val">--</span>
+
+          <div class="status-footer">
+            <span class="label">SYSTEM:</span> <span id="desc-val">STANDBY</span>
           </div>
         </div>
 
-        <div class="status-footer">
-          <span class="label">SYSTEM:</span> <span id="desc-val">STANDBY</span>
+        <!-- PANEL DERECHO: LEYENDA CIENTÍFICA -->
+        <div id="legend-panel" class="hud-panel right-panel">
+          <div class="panel-header">
+            <span>[KEY]</span> <span>VISUAL_DECODER</span>
+          </div>
+          <ul class="legend-list">
+            <li>
+              <span class="symbol" style="color: var(--accent-tertiary)">░▒▓</span>
+              <div class="legend-desc">
+                <strong>ENTROPY</strong>
+                <small>Temperature / Chaos Level</small>
+              </div>
+            </li>
+            <li>
+              <span class="symbol" style="color: #fff">→</span>
+              <div class="legend-desc">
+                <strong>VECTOR</strong>
+                <small>Wind Direction / Alignment</small>
+              </div>
+            </li>
+            <li>
+              <span class="symbol" style="color: var(--accent-primary)">[+]</span>
+              <div class="legend-desc">
+                <strong>METABOLISM</strong>
+                <small>Mobility / Update Rate</small>
+              </div>
+            </li>
+          </ul>
         </div>
+
       </div>
+      <script type="module" src="/src/main.js"></script>
+      </body>
 
-      <!-- PANEL DERECHO: LEYENDA -->
-      <div id="legend-panel" class="hud-panel right-panel">
-        <div class="panel-header">VISUAL KEY</div>
-        <ul class="legend-list">
-          <li>
-            <span class="legend-color gradient-temp"></span>
-            <div class="legend-text">
-              <strong>COLOR</strong>
-              <small>Temperature (Warm/Cool)</small>
-            </div>
-          </li>
-          <li>
-            <span class="legend-icon icon-wind">≈</span>
-            <div class="legend-text">
-              <strong>FLOW</strong>
-              <small>Wind Speed & Direction</small>
-            </div>
-          </li>
-          <li>
-            <span class="legend-icon icon-pulse">◉</span>
-            <div class="legend-text">
-              <strong>INTENSITY</strong>
-              <small>Urban Mobility (TMB)</small>
-            </div>
-          </li>
-        </ul>
-      </div>
-
-    </div>
-    <script type="module" src="/src/main.js"></script>
-    </body>
-
-  </html>
+    </html>
