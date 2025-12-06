@@ -7,9 +7,11 @@ const axios = require('axios');
 
 // CONFIGURACIÓN: Límites para normalización (Calibrado para BCN)
 const BOUNDS = {
-    TEMP: { min: 0, max: 35 },    
-    WIND: { min: 0, max: 50 },    
-    RAIN: { min: 0, max: 10 }     
+    TEMP: { min: 0, max: 35 },
+    WIND: { min: 0, max: 50 },
+    WIND: { min: 0, max: 50 },
+    RAIN: { min: 0, max: 10 },
+    LINES: { min: 0, max: 10 } // Normalización para líneas activas (asumiendo 10 como "tráfico alto")
 };
 
 class DataEngine {
@@ -54,18 +56,18 @@ class DataEngine {
             // Se usa seno para una curva suave (pico a las 15h)
             const phase = Math.sin((hour / 24) * 2 * Math.PI - 1.5);
             base = 0.35 + 0.25 * phase; // Rango aprox: 0.10 a 0.60
-            
+
         } else {
             // Laborable: Picos de hora punta (Morning/Evening)
             if (hour >= 23 || hour <= 5) {
                 base = 0.05 + Math.random() * 0.05; // Noche (0.05 a 0.10)
             } else {
                 // Cálculo de picos suaves (MorningPeak a las 8:00, EveningPeak a las 18:00)
-                const morningPeak = Math.max(0, 1 - Math.abs(hour - 8) / 3); 
-                const eveningPeak = Math.max(0, 1 - Math.abs(hour - 18) / 3); 
-                
+                const morningPeak = Math.max(0, 1 - Math.abs(hour - 8) / 3);
+                const eveningPeak = Math.max(0, 1 - Math.abs(hour - 18) / 3);
+
                 // Valor base (0.3) + 0.6x (el máximo del pico) = Rango máx ~0.9
-                base = 0.3 + 0.6 * Math.max(morningPeak, eveningPeak); 
+                base = 0.3 + 0.6 * Math.max(morningPeak, eveningPeak);
             }
         }
 
@@ -105,9 +107,9 @@ class DataEngine {
             if (data.rain && data.rain['1h']) {
                 rainVol = data.rain['1h'];
             } else if (data.weather[0].main === 'Rain' || data.weather[0].main === 'Drizzle') {
-                rainVol = 2; 
+                rainVol = 2;
             } else if (data.weather[0].main === 'Thunderstorm') {
-                rainVol = 8; 
+                rainVol = 8;
             }
 
             // ACTUALIZAR ESTADO
@@ -115,7 +117,8 @@ class DataEngine {
                 tempIndex: this.normalize(tempVal, BOUNDS.TEMP.min, BOUNDS.TEMP.max),
                 windIndex: this.normalize(windKmH, BOUNDS.WIND.min, BOUNDS.WIND.max),
                 rainIndex: this.normalize(rainVol, BOUNDS.RAIN.min, BOUNDS.RAIN.max),
-                mobilityIndex: this.calculateMobilityFactor(), // Usamos la función mejorada
+                rainIndex: this.normalize(rainVol, BOUNDS.RAIN.min, BOUNDS.RAIN.max),
+                mobilityIndex: await this.fetchTMBData(), // Usamos dato real de TMB o fallback
                 timestamp: Date.now(),
                 weatherDescription: data.weather[0].description
             };
@@ -137,19 +140,55 @@ class DataEngine {
     }
 
     /**
+     * Obtiene datos de tráfico (Metro) desde nuestra propia API local (que llama a TMB)
+     * Si falla, usa el cálculo estimado horario.
+     */
+    async fetchTMBData() {
+        try {
+            // Llamada interna a nuestro endpoint (asumiendo localhost:3000 por defecto)
+            // En producción, idealmente se llamaría a la función lógica directamente, 
+            // pero para desacoplar usamos la ruta interna o simplemente la lógica aquí.
+            // Para simplificar y no hacer fetch a localhost que puede dar problemas de red en Docker/Render:
+            // Vamos a usar una lógica híbrida: Si hay credenciales, intentamos deducir estado.
+
+            // NOTA: Como DataEngine corre en el mismo proceso, hacer fetch a 'localhost' es redundante y frágil.
+            // Mejor sería importar la lógica, pero como es un curso, vamos a mantener el fallback robusto.
+
+            const appId = process.env.TMB_APP_ID;
+            if (!appId) throw new Error("No TMB Credentials");
+
+            const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${process.env.TMB_APP_ID}&app_key=${process.env.TMB_APP_KEY}`;
+            const response = await axios.get(url);
+
+            if (response.data && response.data.features) {
+                const activeLines = response.data.features.length;
+                console.log(`🚇 [TMB] Líneas Metro Activas: ${activeLines}`);
+                return this.normalize(activeLines, BOUNDS.LINES.min, BOUNDS.LINES.max);
+            }
+
+        } catch (error) {
+            // Silencioso para no ensuciar log si no está configurado
+            // console.warn("⚠️ Fallo TMB, usando estimación horaria:", error.message);
+        }
+
+        // Fallback: Usar el algoritmo de hora
+        return this.calculateMobilityFactor();
+    }
+
+    /**
      * Genera datos falsos para desarrollo sin API Key
      */
     simulateData() {
         this.currentState.tempIndex = this.normalize(20 + Math.random() * 5, 0, 40);
         this.currentState.windIndex = Math.random();
-        this.currentState.rainIndex = Math.random() > 0.8 ? 0.5 : 0; 
+        this.currentState.rainIndex = Math.random() > 0.8 ? 0.5 : 0;
         this.currentState.mobilityIndex = this.calculateMobilityFactor(); // Usamos la función mejorada
         this.currentState.timestamp = Date.now();
         this.currentState.weatherDescription = "simulated mode";
     }
 
     scheduleNextUpdate(delay) {
-        if (!this.isPolling) return; 
+        if (!this.isPolling) return;
         if (this.timer) clearTimeout(this.timer);
         this.timer = setTimeout(() => this.fetchWeatherData(), delay);
     }

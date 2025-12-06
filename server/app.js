@@ -39,6 +39,7 @@ dataEngine.startPolling();
 // --- RUTAS API ---
 app.use('/api/weather', weatherRoutes(dataEngine));
 app.use('/api/bicing', bicingRoutes);
+app.use('/api/tmb', require('./routes/tmb'));
 
 // --- RUTA CATCH-ALL PARA SPA (Vite) ---
 // Cualquier petición que no sea API, devuelve index.html
