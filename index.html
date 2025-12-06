@@ -3,13 +3,52 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emotions in Transit</title>
-  <!-- CSS (Vite lo importará vía main.js, pero podemos poner estilos globales si faltan) -->
-</head>
+  <!DOCTYPE html>
+  <html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotions in Transit</title>
+    <!-- CSS (Vite lo importará vía main.js, pero podemos poner estilos globales si faltan) -->
+  </head>
 
 <body>
   <div id="app"></div>
+
+  <!-- UI LAYER -->
+  <div id="ui-layer">
+    <!-- PANTALLA DE BIENVENIDA -->
+    <div id="welcome-screen">
+      <h1>Emotions in Transit</h1>
+      <p class="subtitle">Urban Data Sonification & Visualization</p>
+      <button id="start-btn">Iniciar Experiencia</button>
+    </div>
+
+    <!-- PANEL DE INFORMACIÓN (Sidebar) -->
+    <div id="info-panel">
+      <div style="margin-bottom: 15px; font-size: 0.9rem;">
+        <span class="status-dot"></span> <span id="location-name">Conectando...</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Temperatura</span>
+        <span class="value" id="temp-val">--°C</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Viento</span>
+        <span class="value" id="wind-val">-- km/h</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Lluvia</span>
+        <span class="value" id="rain-val">--</span>
+      </div>
+      <div class="data-row" style="margin-top: 10px; opacity: 0.6;">
+        <span class="label">Estado</span>
+        <span class="value" id="desc-val">...</span>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 
