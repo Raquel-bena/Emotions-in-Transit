@@ -1,53 +1,36 @@
-<div align="center">
+# Emotions in Transit: Biometric City
 
-# EMOTIONS IN TRANSIT
-### Urban Data Visualization & Generative Environment
+A real-time urban visualization installation that maps the "emotional" and "physical" state of Barcelona into a digital generative canvas. The system consumes data from weather, transport, and environmental sensors to generate a living digital organism.
 
-![Status](https://img.shields.io/badge/Status-Development-blue)
-![Stack](https://img.shields.io/badge/Stack-Full_Web_Architecture-blueviolet)
-![Degree](https://img.shields.io/badge/MSc-MDACT_La_Salle-003399)
-![License](https://img.shields.io/badge/License-MIT-green)
+## 🔗 Data Sources (Official APIs)
 
-<p align="center">
-  <img src="docs/assets/banner_render_v2.jpg" alt="Project Visualization Render" width="100%">
-</p>
+- **Meteorology**: [OpenWeatherMap](https://openweathermap.org/api)
+- **Transport (Metro/Bus)**: [TMB Open Data](https://developer.tmb.cat/)
+- **Environment (Noise/Air Quality)**: [Barcelona Environmental Maps](https://ajuntament.barcelona.cat/mapes-dades-ambientals/qualitataire/en/)
+- **Noise Ordinance**: [Barcelona Noise Map](https://ajuntament.barcelona.cat/mapes-dades-ambientals/soroll/en/)
 
-*A Master Thesis project submitted for the MSc in Digital Arts and Creative Technologies.*
-*Academic Year 2025-2026*
+## 🎨 Visual Mapping System
 
-[View Live Demo](http://localhost:5173) | [Read Full Report (PDF)](docs/report/Final_Thesis.pdf)
+| Data | Visual Parameter | Aesthetic Meaning |
+|------|------------------|-------------------|
+| **Temperature** | Color (Blue -> Red) | Thermal Energy |
+| **Humidity** | Blur / Fog | Atmospheric Density |
+| **Noise (dB)** | Jitter / Vibration | Urban Stress / Activity |
+| **Traffic** | Chaos / Rotation | Flow & Entropy |
+| **Time (Ld/Le/Ln)**| Lighting / Contrast | Circadian Rhythm |
 
-</div>
+## 🛠️ Tech Stack
+
+- **Frontend**: API p5.js (Visuals), Tone.js (Audio), Tweakpane (GUI), Vite.
+- **Backend**: Node.js, Express (Data Normalization & Caching).
+
+## 🚀 How to Run
+
+1.  Clone repository.
+2.  Install dependencies: `npm install`
+3.  Configure `.env` with your API Keys (OWM_KEY, TMB_APP_ID, etc.). *Defaults to Simulation Mode if keys are missing.*
+4.  Start Development Server: `npm run dev`
+5.  Start Backend Server: `npm start`
 
 ---
-
-## 📑 Abstract
-*(Project Pivot: From Biometrics to Urban Biomes)*
-
-**Emotions in Transit** reinterprets the city of Barcelona as a living organism. Instead of focusing on individual biometrics, this project shifts the lens to the "urban pulse." By aggregating real-time data from public transport (TMB), bicycle usage (Bicing), and meteorology (OpenWeather), the system translates the city's efficiency, chaos, and rhythm into an immersive audiovisual experience.
-
-The project moves away from proprietary software (TouchDesigner) to a scalable **Full-Stack Web Architecture**, demonstrating how open web technologies (`p5.js`, `Tone.js`, `Node.js`) can be used to democratize complex data visualization in public spaces.
-
-**Keywords:** *Urban Computing, Data Visualization, Generative Art, Full-Stack Development, Real-Time APIs.*
-
----
-
-## ⚙️ System Architecture (Data Flow)
-*Visualizing the technical pipeline for Evaluation Objective 3 (Clarity & Structure).*
-
-El sistema ha evolucionado de una conexión serial local a una arquitectura Cliente-Servidor desacoplada.
-
-```mermaid
-graph LR
-    A[External APIs] -->|Raw JSON| B(Node.js Backend)
-    subgraph "Server Side (Port 3000)"
-    B -->|TMB & OpenWeather| C{Data Normalizer}
-    C -->|Calculated 'Mood'| D[API Endpoint]
-    end
-    
-    subgraph "Client Side (Port 5173)"
-    D -->|Fetch JSON| E[Vite Frontend]
-    E -->|Visual Render| F[p5.js Instance]
-    E -->|Sonification| G[Tone.js Engine]
-    end
-    
+*Project for Elisava / Data Visualization Course*

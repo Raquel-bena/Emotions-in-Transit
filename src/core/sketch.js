@@ -3,24 +3,24 @@ import { Pane } from 'tweakpane';
 import { GridAgent } from '../visual/Particle.js';
 
 // --- CONFIGURACIÓN GLOBAL ---
-let agents = []; // La red de autómatas
+let agents = [];
 let guiParams = {
-  gridSize: 30, // Tamaño de celda en px
+  gridSize: 30,
   showGridLines: true,
   bloomStrength: 0.5,
   baseColor: '#0b0c10'
 };
 
-// --- AUDIO VARS ---
+// --- AUDIO (Placeholder) ---
 let synth, filter, reverb;
 let isAudioStarted = false;
 
-// Estado Data (Normalizado)
+// --- ESTADO BIOMÉTRICO (Espejo del backend) ---
 let state = {
-  windIndex: 0.1,
-  rainIndex: 0.0,
-  tempIndex: 0.5,
-  mobilityIndex: 0.5
+  meta: { period: 'Ld', timestamp: 0 },
+  weather: { temp: 20, humidity: 50, windSpeed: 10, windDir: 0, rain: 0 },
+  environment: { noiseDb: 50, airQuality: 10 },
+  transport: { congestion: 5, flowRhythm: 0.5 }
 };
 
 // --- SETUP ---
@@ -29,34 +29,33 @@ function setup() {
   textFont('Space Mono');
 
   // 1. SETUP GUI (Tweakpane)
-  const pane = new Pane({ title: 'CONTROL_PANEL // SYS_ADMIN' });
+  const pane = new Pane({ title: 'BIOMETRIC_CITY_CORE' });
 
-  const f1 = pane.addFolder({ title: 'VISUAL_ENGINE' });
-  f1.addBinding(guiParams, 'gridSize', { min: 10, max: 100, step: 5 }).on('change', initGrid);
-  f1.addBinding(guiParams, 'showGridLines');
-  f1.addBinding(guiParams, 'bloomStrength', { min: 0, max: 1 });
-  f1.addBinding(guiParams, 'baseColor');
+  const fView = pane.addFolder({ title: 'VIEWPORT' });
+  fView.addBinding(guiParams, 'gridSize', { min: 15, max: 60, step: 5 }).on('change', initGrid);
+  fView.addBinding(guiParams, 'showGridLines');
 
-  const f2 = pane.addFolder({ title: 'DATA_OVERRIDE (Simulation)' });
-  f2.addBinding(state, 'tempIndex', { min: 0, max: 1, label: 'Entropy (Temp)' });
-  f2.addBinding(state, 'windIndex', { min: 0, max: 1, label: 'Vector (Wind)' });
-  f2.addBinding(state, 'mobilityIndex', { min: 0, max: 1, label: 'Metabol (Pulse)' });
-  f2.addBinding(state, 'rainIndex', { min: 0, max: 1, label: 'Density (Rain)' });
+  const fData = pane.addFolder({ title: 'LIVE DATA (Read-Only / Override)' });
+  // Weather
+  fData.addBinding(state.weather, 'temp', { min: 0, max: 40, label: 'Temp °C' });
+  fData.addBinding(state.weather, 'humidity', { min: 0, max: 100, label: 'Humidity %' });
+  fData.addBinding(state.weather, 'windSpeed', { min: 0, max: 100, label: 'Wind km/h' });
+  // Environment
+  fData.addBinding(state.environment, 'noiseDb', { min: 30, max: 100, label: 'Noise dB' });
+  fData.addBinding(state.environment, 'airQuality', { min: 0, max: 50, label: 'PM2.5' });
+  // Transport
+  fData.addBinding(state.transport, 'congestion', { min: 0, max: 10, label: 'Traffic Idx' });
 
-  // 2. AUDIO SETUP
-  // 2. AUDIO SETUP
-  // Tone.js se inicializará tras la interacción del usuario (en initAudioEngine) para evitar advertencias de AudioContext.
-
-  // 3. INICIALIZAR GRID
-  initGrid();
-
-  // 4. UI HANDLERS
+  // 2. EVENTS
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', initAudioEngine);
 
-  // 5. DATOS & RELOJ
+  // 3. INIT
+  initGrid();
+
+  // 4. DATA POLLING
   getWeatherData();
-  setInterval(getWeatherData, 600000);
+  setInterval(getWeatherData, 10000); // 10s polling
   setInterval(updateClock, 1000);
 }
 
@@ -76,53 +75,67 @@ function initGrid() {
 
 // --- DRAW ---
 function draw() {
-  background(guiParams.baseColor);
+  // 1. BACKGROUND CHANGE based on Time of Day (Period)
+  if (state.meta.period === 'Ln') background(5, 5, 10); // Noche profunda
+  else if (state.meta.period === 'Le') background(20, 10, 15); // Tarde/Noche
+  else background(guiParams.baseColor); // Día (Default)
 
-  // Dibujar Grid Lines (Estructural)
+  // 2. GRID
   if (guiParams.showGridLines) {
-    stroke(255, 30);
+    stroke(255, 15);
     strokeWeight(1);
-    // Verticales
     for (let x = 0; x <= width; x += guiParams.gridSize) line(x, 0, x, height);
-    // Horizontales
     for (let y = 0; y <= height; y += guiParams.gridSize) line(0, y, width, y);
   }
 
-  // Actualizar agetes
+  // 3. AGENTS UPDATE
+  // Pasamos el estado COMPLETO
   for (let agent of agents) {
     agent.update(state);
     agent.display();
+  }
+
+  // 4. GLOBAL EFFECTS (Post-Process)
+  // Humidity -> Blur
+  // > 70% humidity starts blurring
+  if (state.weather.humidity > 60) {
+    let blurAmt = map(state.weather.humidity, 60, 100, 0, 4);
+    filter(BLUR, blurAmt);
   }
 }
 
 // --- LOGIC ---
 async function getWeatherData() {
-  console.log("Fetching Data...");
   try {
     const res = await fetch('/api/weather');
     if (res.ok) {
       const data = await res.json();
-      // Solo actualizamos si NO estamos "sobreescribiendo" manualmente (opcional, por ahora actualizamos siempre)
-      // Para demo en Tweakpane, dejamos que los sliders manden si el usuario toca, pero aquí actualizamos la "base".
-      // Vamos a actualizar UI textual pase lo que pase.
-      updateDOM(data);
-      // Actualizar estado solo si queremos data real
-      state.tempIndex = data.tempIndex;
-      state.windIndex = data.windIndex;
-      // etc (simplificado para priorizar Tweakpane en demo visual, pero lógica real iría aquí)
+      // MERGE data safely update UI logic
+      // Note: In a real app we might want to smoothly interpolate these values
+      Object.assign(state.meta, data.meta);
+      Object.assign(state.weather, data.weather);
+      Object.assign(state.environment, data.environment);
+      Object.assign(state.transport, data.transport);
+
+      updateDOM();
     }
   } catch (e) {
-    console.error(e);
+    console.error("Fetch Data Error:", e);
   }
 }
 
-function updateDOM(data) {
-  // Update HTML Text labels
+function updateDOM() {
   const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
-  setTxt('temp-val', (state.tempIndex * 40).toFixed(1) + "°C");
-  setTxt('wind-val', (state.windIndex * 100).toFixed(0) + " km/h");
-  setTxt('mobil-val', Math.round(state.mobilityIndex * 100) + "%");
-  setTxt('rain-val', state.rainIndex > 0.1 ? "HIGH" : "LOW");
+
+  // Left Panel Monitor
+  setTxt('temp-val', state.weather.temp.toFixed(1) + "°C");
+  setTxt('wind-val', state.weather.windSpeed.toFixed(0) + " km/h");
+  setTxt('mobil-val', state.transport.congestion.toFixed(1) + " / 10");
+
+  // Environment (New IDs might be needed in HTML or reuse slots)
+  // Reuse "rain-val" for Noise momentarily or add new items dynamically?
+  // For now let's map logic to existing slots if available, or just rely on GUI.
+  setTxt('rain-val', state.environment.noiseDb.toFixed(0) + " dB");
 }
 
 function updateClock() {
@@ -133,18 +146,11 @@ function updateClock() {
 
 function initAudioEngine() {
   if (isAudioStarted) return;
-  // Inicializar Audio Nodes aquí para cumplir políticas del navegador
-  reverb = new Tone.Reverb({ decay: 2, wet: 0.2 }).toDestination();
-  filter = new Tone.Filter(800, "lowpass").connect(reverb);
-  synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "square" },
-    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
-  }).connect(filter);
-
   Tone.start().then(() => {
     isAudioStarted = true;
-    document.getElementById('welcome-screen').style.display = 'none';
-    synth.triggerAttackRelease(["C3", "E3", "G3"], "8n");
+    const overlay = document.getElementById('welcome-screen');
+    if (overlay) overlay.style.display = 'none';
+    console.log("Audio Engine Started");
   });
 }
 
