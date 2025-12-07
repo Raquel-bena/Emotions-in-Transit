@@ -32,5 +32,3 @@ A real-time urban visualization installation that maps the "emotional" and "phys
 4.  Start Development Server: `npm run dev`
 5.  Start Backend Server: `npm start`
 
----
-*Project for Elisava / Data Visualization Course*
