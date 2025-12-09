@@ -1,33 +1,36 @@
 /**
- * MOTOR DE DATOS (Data Engine) - VERSIÓN FINAL EMOTIONS IN TRANSIT
- * Ubicación: backend/services/dataNormalizer.js
- * * Integra:
- * 1. SmartCitizen Kit #16559 (MACBA) -> Ruido, Luz, Aire, Temp Local
- * 2. OpenWeatherMap -> Viento, Lluvia, Presión general
- * 3. TMB API -> Estado del Metro
+ * MOTOR DE DATOS (Data Engine) - VERSIÓN DEFINITIVA
+ * Ubicación: server/utils/dataNormalizer.js
+ * * INTEGRA:
+ * 1. SmartCitizen Kit #14129 (Palo Alto) -> Fuente principal (Ruido, CO2, Luz, Aire)
+ * 2. OpenWeatherMap (OWM) -> Respaldo climático general BCN
+ * 3. TMB API -> Ritmo de la ciudad (Metro)
  */
 const axios = require('axios');
 
-// --- CONFIGURACIÓN ---
-const SC_DEVICE_ID = 16559; // Kit en Plaça dels Àngels (MACBA)
+// --- 1. CONFIGURACIÓN DEL KIT (PALO ALTO) ---
+// Usamos el 14129 porque tiene sensor de CO2 real, ideal para "emociones"
+const SC_DEVICE_ID = 14129;
 
-// IDs de Sensores en SCK 2.1
+// IDs de Sensores específicos del SCK 2.1 (Palo Alto)
 const SENSORS = {
-    NOISE: 53,      // dBA
+    NOISE: 53,      // dBA (Micrófono ICS-43432 del PDF)
     LIGHT: 14,      // Lux
-    PM25: 87,       // µg/m³
+    PM25: 87,       // µg/m³ (Aire)
     TEMP: 55,       // °C
-    HUMIDITY: 56    // %
+    HUMIDITY: 56,   // %
+    CO2: 10,        // ppm (Sensor CO2 dedicado)
+    ECO2: 22        // ppm (Estimado, como backup)
 };
 
 class DataEngine {
     constructor() {
-        // ESTADO INICIAL (Por defecto)
+        // ESTADO INICIAL (Fallback seguro por si tarda en arrancar)
         this.currentState = {
             meta: {
                 timestamp: Date.now(),
-                period: "Ld",  // Ld=Day, Le=Evening, Ln=Night
-                mode: "INIT"   // REAL_MACBA / SIMULATED / HYBRID
+                period: "Ld",  // Ld=Día, Ln=Noche
+                mode: "INIT"   // REAL_PALOALTO / SIMULATED
             },
             weather: {
                 temp: 20,
@@ -39,13 +42,14 @@ class DataEngine {
                 description: 'init'
             },
             environment: {
-                noiseDb: 50,
-                noiseFreq: 'LOW', // LOW/MID/HIGH
-                airQuality: 10,   // PM2.5
-                lightLevel: 0.5   // 0.0 a 1.0
+                noiseDb: 45,      // Base tranquila
+                noiseFreq: 'LOW',
+                airQuality: 10,
+                co2: 400,         // Aire limpio base
+                lightLevel: 0.5
             },
             transport: {
-                congestion: 5,    // 0-10
+                congestion: 5,
                 activeLines: 5,
                 flowRhythm: 0.5
             }
@@ -55,48 +59,64 @@ class DataEngine {
         this.isPolling = false;
     }
 
-    // --- 1. CONEXIÓN SMARTCITIZEN (MACBA) ---
+    // --- 2. CONEXIÓN SMARTCITIZEN (PALO ALTO) ---
     async fetchSmartCitizenData() {
         try {
-            // API pública v0 (Lectura gratuita)
-            const url = `https://api.smartcitizen.me/v0/devices/${SC_DEVICE_ID}`;
-            const res = await axios.get(url, { timeout: 5000 }); // Timeout 5s
+            // URL con soporte opcional para Token (si lo pones en .env)
+            let url = `https://api.smartcitizen.me/v0/devices/${SC_DEVICE_ID}`;
+            if (process.env.SC_API_TOKEN) {
+                url += `?token=${process.env.SC_API_TOKEN}`;
+            }
 
+            const res = await axios.get(url, { timeout: 8000 });
             const sensors = res.data.data.sensors;
+
+            // Función para extraer valor seguro
             const getVal = (id) => {
                 const s = sensors.find(x => x.id === id);
                 return s ? s.value : null;
             };
 
+            // Lectura de sensores
             const noise = getVal(SENSORS.NOISE);
             const light = getVal(SENSORS.LIGHT);
-            const pm25 = getVal(SENSORS.PM25);
             const temp = getVal(SENSORS.TEMP);
             const hum = getVal(SENSORS.HUMIDITY);
+            // Priorizamos CO2 real (ID 10), si no, usamos eCO2 (ID 22)
+            const co2 = getVal(SENSORS.CO2) || getVal(SENSORS.ECO2);
 
-            // Validación básica: Si no hay ruido, asumimos error de sensor
-            if (noise === null) throw new Error("Sensor de ruido vacío");
+            // --- FILTRO DE SEGURIDAD (CRÍTICO) ---
+            let pm25 = getVal(SENSORS.PM25);
+            // El sensor PM tiene un error conocido que devuelve ~2777. Lo filtramos.
+            if (pm25 > 500) {
+                console.warn(`⚠️ Corrección automática: PM2.5 saturado (${pm25}) -> Ajustado a 50.`);
+                pm25 = 50;
+            }
 
-            // Normalización de Luz (0 lux = 0.0, 1000 lux = 1.0)
+            // Validación de integridad
+            if (noise === null) throw new Error("Sensor de ruido no responde");
+
+            // Normalización Luz (0 a 1)
             const normLight = Math.min(1, Math.max(0, light / 1000));
 
-            console.log(`📡 [MACBA] Ruido: ${noise.toFixed(1)}dB | Luz: ${light.toFixed(0)}lx | PM2.5: ${pm25}`);
+            console.log(`📡 [PALO ALTO] Ruido: ${noise.toFixed(1)}dB | CO2: ${co2}ppm | Luz: ${light}lx`);
 
             return {
                 noiseDb: noise,
                 lightLevel: normLight,
                 airQuality: pm25 || 15,
+                co2: co2 || 400,
                 temp: temp,
                 humidity: hum
             };
 
         } catch (error) {
-            console.error(`⚠️ Error SmartCitizen (Kit ${SC_DEVICE_ID}):`, error.message);
-            return null; // Retornamos null para activar fallback
+            console.error(`⚠️ Error Kit Palo Alto (#${SC_DEVICE_ID}):`, error.message);
+            return null; // Devuelve null para activar la simulación temporal
         }
     }
 
-    // --- 2. CONEXIÓN OPENWEATHERMAP (General BCN) ---
+    // --- 3. CONEXIÓN CLIMA GENERAL (OpenWeatherMap) ---
     async fetchOWMData() {
         const apiKey = process.env.OWM_KEY;
         if (!apiKey) return null;
@@ -104,24 +124,20 @@ class DataEngine {
         try {
             const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
             const res = await axios.get(url, { timeout: 5000 });
-            const d = res.data;
-
             return {
-                temp: d.main.temp,
-                humidity: d.main.humidity,
-                pressure: d.main.pressure,
-                windSpeed: d.wind.speed * 3.6, // m/s a km/h
-                windDir: d.wind.deg,
-                rain: (d.rain && d.rain['1h']) ? d.rain['1h'] : 0,
-                description: d.weather[0].description
+                windSpeed: res.data.wind.speed * 3.6, // km/h
+                windDir: res.data.wind.deg,
+                rain: (res.data.rain && res.data.rain['1h']) ? res.data.rain['1h'] : 0,
+                pressure: res.data.main.pressure,
+                description: res.data.weather[0].description,
+                // Guardamos temp de respaldo
+                temp: res.data.main.temp,
+                hum: res.data.main.humidity
             };
-        } catch (e) {
-            console.error("❌ Error OWM:", e.message);
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
-    // --- 3. CONEXIÓN TMB (Metro) ---
+    // --- 4. CONEXIÓN TRANSPORTE (TMB Metro) ---
     async fetchTMBData() {
         const appId = process.env.TMB_APP_ID;
         const appKey = process.env.TMB_APP_KEY;
@@ -131,14 +147,12 @@ class DataEngine {
             const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${appId}&app_key=${appKey}`;
             const res = await axios.get(url, { timeout: 5000 });
             return res.data.features ? res.data.features.length : 0;
-        } catch (e) {
-            return 0; // Fallback silencioso
-        }
+        } catch (e) { return 0; }
     }
 
-    // --- LÓGICA PRINCIPAL (ORQUESTADOR) ---
+    // --- ORQUESTADOR: FUSIÓN DE DATOS ---
     async fetchWeatherData() {
-        // A. Obtener datos de fuentes
+        // Ejecutamos todas las peticiones en paralelo
         const [scData, owmData, activeLines] = await Promise.all([
             this.fetchSmartCitizenData(),
             this.fetchOWMData(),
@@ -149,61 +163,66 @@ class DataEngine {
         let env = {};
         let mode = "SIMULATED";
 
-        // B. Procesar SmartCitizen (Prioridad Local)
+        // A. PROCESAMIENTO DEL SENSOR (Prioridad absoluta)
         if (scData) {
-            mode = "REAL_MACBA";
+            mode = "REAL_PALOALTO";
             env = {
                 noiseDb: scData.noiseDb,
-                noiseFreq: scData.noiseDb > 65 ? 'HIGH' : (scData.noiseDb > 50 ? 'MID' : 'LOW'),
+                // Análisis de frecuencia simple basado en intensidad
+                noiseFreq: scData.noiseDb > 60 ? 'HIGH' : (scData.noiseDb > 45 ? 'MID' : 'LOW'),
                 airQuality: scData.airQuality,
+                co2: scData.co2,
                 lightLevel: scData.lightLevel
             };
-            // Usamos Temp/Hum real del MACBA si está disponible
+            // Usamos la temperatura real del sitio si existe
             weather.temp = scData.temp || 20;
             weather.humidity = scData.humidity || 50;
         } else {
-            // Fallback Simulado si falla el Kit
+            // Si el sensor falla, entramos en modo simulación suave
             env = this.getSimulatedEnvironment();
             weather.temp = 20;
             weather.humidity = 60;
         }
 
-        // C. Procesar OWM (Complemento Viento/Lluvia)
+        // B. PROCESAMIENTO CLIMÁTICO (Relleno)
         if (owmData) {
             weather.windSpeed = owmData.windSpeed;
             weather.windDir = owmData.windDir;
             weather.rain = owmData.rain;
             weather.pressure = owmData.pressure;
             weather.description = owmData.description;
-            // Si el kit falló pero OWM va, usamos temp de OWM
+
+            // Si el sensor falló pero OWM funciona, usamos temp de OWM
             if (!scData) {
                 weather.temp = owmData.temp;
-                weather.humidity = owmData.humidity;
+                weather.humidity = owmData.hum;
                 mode = "REAL_OWM_ONLY";
             }
         } else {
-            // Valores por defecto si OWM falla
-            weather.windSpeed = weather.windSpeed || 5;
-            weather.windDir = weather.windDir || 0;
-            weather.rain = weather.rain || 0;
-            weather.pressure = 1013;
+            weather.windSpeed = 5; weather.rain = 0; // Valores seguros
         }
 
-        // D. Lógica Derivada (Tráfico y Periodo)
+        // C. CÁLCULO DE "EMOCIONES" (Mapeo de Datos a Visuales)
 
-        // 1. Periodo (Día/Noche) basado en LUZ REAL
-        let period = "Ln"; // Noche
+        // 1. Periodo (Día/Noche): Lo define la LUZ real, no el reloj
+        let period = "Ln"; // Noche por defecto
         if (env.lightLevel > 0.1) period = "Ld"; // Día
-        else if (env.noiseDb > 55) period = "Le"; // Tarde/Noche activa
+        else if (env.noiseDb > 50) period = "Le"; // Noche urbana activa
 
-        // 2. Congestión basada en RUIDO (El ruido del MACBA mueve el "tráfico")
-        // 40dB (silencio) -> 0 congestion | 80dB (ruido) -> 10 congestion
-        let congestion = Math.max(0, Math.min(10, (env.noiseDb - 40) / 4));
+        // 2. Congestión (Estrés del sistema):
+        // Mezclamos Ruido (Agitación) + CO2 (Ambiente cargado)
+        // 400ppm CO2 = Aire puro (0.0) | 1000ppm = Aire viciado (1.0)
+        const co2Stress = Math.max(0, Math.min(1, (env.co2 - 400) / 600));
+        // 40dB = Silencio (0.0) | 80dB = Ruido fuerte (1.0)
+        const noiseStress = Math.max(0, Math.min(1, (env.noiseDb - 40) / 40));
 
-        // 3. Modulación por Metro (Si el metro cierra, baja un poco la actividad visual)
-        if (activeLines < 2) congestion *= 0.8;
+        // Fórmula ponderada: 70% Ruido, 30% CO2
+        let congestion = ((noiseStress * 0.7) + (co2Stress * 0.3)) * 10;
 
-        // E. Actualizar Estado Global
+        // Si el Metro (TMB) está cerrado (<2 líneas), relajamos el sistema
+        if (activeLines < 2) congestion *= 0.6;
+
+        // D. ACTUALIZACIÓN FINAL
         this.currentState = {
             meta: {
                 timestamp: Date.now(),
@@ -213,25 +232,25 @@ class DataEngine {
             weather: weather,
             environment: env,
             transport: {
-                congestion: congestion,
+                congestion: Math.max(0, Math.min(10, congestion)), // Clamp 0-10
                 activeLines: activeLines,
-                flowRhythm: env.lightLevel // Ritmo visual sigue a la luz
+                flowRhythm: env.lightLevel // La luz marca el ritmo visual
             }
         };
 
-        // Actualizar cada 30 segundos
-        this.scheduleNextUpdate(30000);
+        // Recarga cada 60 segundos (Palo Alto actualiza cada minuto aprox)
+        this.scheduleNextUpdate(60000);
     }
 
-    // --- SIMULACIÓN (FALLBACK) ---
+    // --- SIMULACIÓN DE RESPALDO ---
     getSimulatedEnvironment() {
         const h = new Date().getHours();
-        const isDay = (h > 7 && h < 20);
         return {
-            noiseDb: 45 + Math.random() * 15,
+            noiseDb: 45 + Math.random() * 10,
             noiseFreq: 'LOW',
             airQuality: 20,
-            lightLevel: isDay ? 0.8 : 0.1
+            co2: 420,
+            lightLevel: (h > 7 && h < 20) ? 0.8 : 0.05
         };
     }
 
@@ -244,7 +263,7 @@ class DataEngine {
     startPolling() {
         if (this.isPolling) return;
         this.isPolling = true;
-        console.log("🚀 [DataEngine] Iniciando monitoreo (MACBA + OWM + TMB)...");
+        console.log("🚀 [DataEngine] Sistema Iniciado. Conectando a Palo Alto...");
         this.fetchWeatherData();
     }
 
