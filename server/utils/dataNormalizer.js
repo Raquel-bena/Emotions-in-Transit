@@ -138,35 +138,42 @@ class DataEngine {
     }
 
     async fetchWeatherData() {
+        const usePythonDataSource = true;
         const apiKey = process.env.OWM_KEY;
         const tmbAppId = process.env.TMB_APP_ID;
         let nextInterval = 10 * 60 * 1000; // 10 min por defecto
 
         // 1. OBTENER METEOROLOGÍA (OWM)
         let weatherData = {};
-        if (apiKey) {
-            try {
-                const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
-                const res = await axios.get(url);
-                const d = res.data;
-                weatherData = {
-                    temp: d.main.temp,
-                    humidity: d.main.humidity,
-                    pressure: d.main.pressure,
-                    windSpeed: d.wind.speed * 3.6, // m/s a km/h
-                    windDir: d.wind.deg,
-                    rain: (d.rain && d.rain['1h']) ? d.rain['1h'] : 0,
-                    description: d.weather[0].description
-                };
-                console.log(`✅ [OWM] T:${weatherData.temp}°C H:${weatherData.humidity}%`);
-            } catch (e) {
-                console.error("❌ OWM Error:", e.message);
-                weatherData = this.getSimulatedWeather(); // Fallback
-            }
+        if (usePythonDataSource) {
+            const url = "http://127.0.0.1:5000/weather-data";
+            const res = await axios.get(url);
+            weatherData = res.data;
         } else {
-            console.log("⚠️ No OWM Key - Usando Simulación");
-            weatherData = this.getSimulatedWeather();
-            nextInterval = 60000; // Más rápido en simulación
+            if (apiKey) {
+                try {
+                    const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
+                    const res = await axios.get(url);
+                    const d = res.data;
+                    weatherData = {
+                        temp: d.main.temp,
+                        humidity: d.main.humidity,
+                        pressure: d.main.pressure,
+                        windSpeed: d.wind.speed * 3.6, // m/s a km/h
+                        windDir: d.wind.deg,
+                        rain: (d.rain && d.rain['1h']) ? d.rain['1h'] : 0,
+                        description: d.weather[0].description
+                    };
+                    console.log(`✅ [OWM] T:${weatherData.temp}°C H:${weatherData.humidity}%`);
+                } catch (e) {
+                    console.error("❌ OWM Error:", e.message);
+                    weatherData = this.getSimulatedWeather(); // Fallback
+                }
+            } else {
+                console.log("⚠️ No OWM Key - Usando Simulación");
+                weatherData = this.getSimulatedWeather();
+                nextInterval = 60000; // Más rápido en simulación
+            }
         }
 
         // 2. OBTENER TRANSPORTE (TMB + Cálculo)
