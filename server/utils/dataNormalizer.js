@@ -1,37 +1,33 @@
 /**
- * MOTOR DE DATOS (Data Engine) - VERSIÓN BIOMETRIC CITY
+ * MOTOR DE DATOS (Data Engine) - VERSIÓN FINAL EMOTIONS IN TRANSIT
  * Ubicación: backend/services/dataNormalizer.js
- * 
- * Mapea datos reales/simulados de Barcelona a un "Estado Biométrico" para la instalación.
+ * * Integra:
+ * 1. SmartCitizen Kit #16559 (MACBA) -> Ruido, Luz, Aire, Temp Local
+ * 2. OpenWeatherMap -> Viento, Lluvia, Presión general
+ * 3. TMB API -> Estado del Metro
  */
 const axios = require('axios');
 
-// CONFIGURACIÓN: Límites para normalización (Calibrado para BCN)
-const BOUNDS = {
-    TEMP: { min: 0, max: 40 },      // °C
-    WIND: { min: 0, max: 60 },      // km/h
-    HUMIDITY: { min: 0, max: 100 }, // %
-    PRESSURE: { min: 980, max: 1040 }, // hPa
-    NOISE: { min: 30, max: 90 },    // dB (30=Silencio, 90=Tráfico denso)
-    AIR_PM25: { min: 0, max: 50 },  // µg/m³ (0=Limpio, 50=Pobre)
-    TRAFFIC: { min: 0, max: 10 }    // Índice 0-10
-};
+// --- CONFIGURACIÓN ---
+const SC_DEVICE_ID = 16559; // Kit en Plaça dels Àngels (MACBA)
 
-// ORDENANZA MEDIOAMBIENTAL BCN - HORARIOS RUIDO
-const NOISE_PERIODS = {
-    DAY: { start: 7, end: 21, baseDB: 65, variance: 15, label: "Ld (Day)" },    // 07:00 - 21:00
-    EVENING: { start: 21, end: 23, baseDB: 55, variance: 10, label: "Le (Evening)" }, // 21:00 - 23:00
-    NIGHT: { start: 23, end: 7, baseDB: 45, variance: 5, label: "Ln (Night)" }     // 23:00 - 07:00
+// IDs de Sensores en SCK 2.1
+const SENSORS = {
+    NOISE: 53,      // dBA
+    LIGHT: 14,      // Lux
+    PM25: 87,       // µg/m³
+    TEMP: 55,       // °C
+    HUMIDITY: 56    // %
 };
 
 class DataEngine {
     constructor() {
-        // ESTADO BIOMÉTRICO COMPLETO
+        // ESTADO INICIAL (Por defecto)
         this.currentState = {
             meta: {
                 timestamp: Date.now(),
-                period: "Ld", // Day/Evening/Night
-                mode: "INIT" // SIMULATED / REAL
+                period: "Ld",  // Ld=Day, Le=Evening, Ln=Night
+                mode: "INIT"   // REAL_MACBA / SIMULATED / HYBRID
             },
             weather: {
                 temp: 20,
@@ -46,12 +42,12 @@ class DataEngine {
                 noiseDb: 50,
                 noiseFreq: 'LOW', // LOW/MID/HIGH
                 airQuality: 10,   // PM2.5
-                lightLevel: 0.5   // 0-1
+                lightLevel: 0.5   // 0.0 a 1.0
             },
             transport: {
-                congestion: 5,   // 0-10
+                congestion: 5,    // 0-10
                 activeLines: 5,
-                flowRhythm: 0.5  // 0-1 (Pulsación)
+                flowRhythm: 0.5
             }
         };
 
@@ -59,179 +55,184 @@ class DataEngine {
         this.isPolling = false;
     }
 
-    // --- UTILIDADES ---
+    // --- 1. CONEXIÓN SMARTCITIZEN (MACBA) ---
+    async fetchSmartCitizenData() {
+        try {
+            // API pública v0 (Lectura gratuita)
+            const url = `https://api.smartcitizen.me/v0/devices/${SC_DEVICE_ID}`;
+            const res = await axios.get(url, { timeout: 5000 }); // Timeout 5s
 
-    normalize(value, min, max) {
-        if (typeof value !== 'number' || isNaN(value)) return 0.5;
-        const norm = (value - min) / (max - min);
-        return Math.max(0, Math.min(1, norm));
-    }
+            const sensors = res.data.data.sensors;
+            const getVal = (id) => {
+                const s = sensors.find(x => x.id === id);
+                return s ? s.value : null;
+            };
 
-    getNoisePeriod() {
-        const hour = new Date().getHours();
-        if (hour >= NOISE_PERIODS.DAY.start && hour < NOISE_PERIODS.DAY.end) return NOISE_PERIODS.DAY;
-        if (hour >= NOISE_PERIODS.EVENING.start && hour < NOISE_PERIODS.EVENING.end) return NOISE_PERIODS.EVENING;
-        return NOISE_PERIODS.NIGHT;
-    }
+            const noise = getVal(SENSORS.NOISE);
+            const light = getVal(SENSORS.LIGHT);
+            const pm25 = getVal(SENSORS.PM25);
+            const temp = getVal(SENSORS.TEMP);
+            const hum = getVal(SENSORS.HUMIDITY);
 
-    // --- LÓGICA DE SIMULACIÓN/CÁLCULO ---
+            // Validación básica: Si no hay ruido, asumimos error de sensor
+            if (noise === null) throw new Error("Sensor de ruido vacío");
 
-    /**
-     * Calcula niveles de Ruido y Aire basados en la hora y tráfico estimado
-     */
-    calculateEnvironmentalMetrics(trafficIndex) {
-        const period = this.getNoisePeriod();
+            // Normalización de Luz (0 lux = 0.0, 1000 lux = 1.0)
+            const normLight = Math.min(1, Math.max(0, light / 1000));
 
-        // Simulación de Ruido: Base del periodo + impacto del tráfico + variabilidad aleatoria
-        const trafficNoiseObj = (trafficIndex / 10) * 10; // Hasta +10dB por tráfico
-        const randomVar = (Math.random() * period.variance) - (period.variance / 2);
+            console.log(`📡 [MACBA] Ruido: ${noise.toFixed(1)}dB | Luz: ${light.toFixed(0)}lx | PM2.5: ${pm25}`);
 
-        let db = period.baseDB + trafficNoiseObj + randomVar;
-        db = Math.max(30, Math.min(95, db)); // Clamp
+            return {
+                noiseDb: noise,
+                lightLevel: normLight,
+                airQuality: pm25 || 15,
+                temp: temp,
+                humidity: hum
+            };
 
-        return {
-            noiseDb: db,
-            noiseFreq: db > 70 ? 'HIGH' : (db > 50 ? 'MID' : 'LOW'),
-            airQuality: Math.max(5, (trafficIndex * 4) + (Math.random() * 10)), // Tráfico ensucia aire
-            periodLabel: period.label
-        };
-    }
-
-    /**
-     * Calcula tráfico/congestión basado en hora y datos TMB
-     */
-    calculateTransportMetrics(tmbActiveLines) {
-        const now = new Date();
-        const hour = now.getHours() + now.getMinutes() / 60;
-        const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
-
-        let baseCongestion = 0.5; // 0-10 escala luego
-
-        if (isWeekend) {
-            baseCongestion = 0.3 + (Math.sin((hour - 14) / 4) * 0.2); // Pico suave tarde
-        } else {
-            // Picos: 8am y 6pm
-            const morningPeak = Math.max(0, 1 - Math.abs(hour - 8.5) / 2);
-            const eveningPeak = Math.max(0, 1 - Math.abs(hour - 18.5) / 2);
-            baseCongestion = 0.2 + (0.7 * Math.max(morningPeak, eveningPeak));
+        } catch (error) {
+            console.error(`⚠️ Error SmartCitizen (Kit ${SC_DEVICE_ID}):`, error.message);
+            return null; // Retornamos null para activar fallback
         }
-
-        // Si tenemos datos reales de TMB (líneas activas), modulamos
-        if (tmbActiveLines > 0) {
-            // Si hay pocas líneas activas (e.g. noche), baja la congestión
-            const availability = tmbActiveLines / 8; // Asumimos 8 líneas principales
-            baseCongestion = (baseCongestion + availability) / 2;
-        }
-
-        return {
-            congestion: baseCongestion * 10, // Escala 0-10
-            flowRhythm: baseCongestion // Para ritmo visual
-        };
     }
 
-    // --- DATA FETCHING ---
-
-    async fetchPythonData() {
-        const url = "http://127.0.0.1:5000/";
-        const res = await axios.get(url);
-        return res.data;
-    }
-
-    async fetchWeatherData() {
-        const usePythonDataSource = true;
+    // --- 2. CONEXIÓN OPENWEATHERMAP (General BCN) ---
+    async fetchOWMData() {
         const apiKey = process.env.OWM_KEY;
-        const tmbAppId = process.env.TMB_APP_ID;
-        let nextInterval = 10 * 60 * 1000; // 10 min por defecto
+        if (!apiKey) return null;
 
-        // 1. OBTENER METEOROLOGÍA (OWM)
-        let weatherData = {};
-        if (usePythonDataSource) {
-            const url = "http://127.0.0.1:5000/weather-data";
-            const res = await axios.get(url);
-            weatherData = res.data;
+        try {
+            const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
+            const res = await axios.get(url, { timeout: 5000 });
+            const d = res.data;
+
+            return {
+                temp: d.main.temp,
+                humidity: d.main.humidity,
+                pressure: d.main.pressure,
+                windSpeed: d.wind.speed * 3.6, // m/s a km/h
+                windDir: d.wind.deg,
+                rain: (d.rain && d.rain['1h']) ? d.rain['1h'] : 0,
+                description: d.weather[0].description
+            };
+        } catch (e) {
+            console.error("❌ Error OWM:", e.message);
+            return null;
+        }
+    }
+
+    // --- 3. CONEXIÓN TMB (Metro) ---
+    async fetchTMBData() {
+        const appId = process.env.TMB_APP_ID;
+        const appKey = process.env.TMB_APP_KEY;
+        if (!appId || !appKey) return 0;
+
+        try {
+            const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${appId}&app_key=${appKey}`;
+            const res = await axios.get(url, { timeout: 5000 });
+            return res.data.features ? res.data.features.length : 0;
+        } catch (e) {
+            return 0; // Fallback silencioso
+        }
+    }
+
+    // --- LÓGICA PRINCIPAL (ORQUESTADOR) ---
+    async fetchWeatherData() {
+        // A. Obtener datos de fuentes
+        const [scData, owmData, activeLines] = await Promise.all([
+            this.fetchSmartCitizenData(),
+            this.fetchOWMData(),
+            this.fetchTMBData()
+        ]);
+
+        let weather = {};
+        let env = {};
+        let mode = "SIMULATED";
+
+        // B. Procesar SmartCitizen (Prioridad Local)
+        if (scData) {
+            mode = "REAL_MACBA";
+            env = {
+                noiseDb: scData.noiseDb,
+                noiseFreq: scData.noiseDb > 65 ? 'HIGH' : (scData.noiseDb > 50 ? 'MID' : 'LOW'),
+                airQuality: scData.airQuality,
+                lightLevel: scData.lightLevel
+            };
+            // Usamos Temp/Hum real del MACBA si está disponible
+            weather.temp = scData.temp || 20;
+            weather.humidity = scData.humidity || 50;
         } else {
-            if (apiKey) {
-                try {
-                    const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
-                    const res = await axios.get(url);
-                    const d = res.data;
-                    weatherData = {
-                        temp: d.main.temp,
-                        humidity: d.main.humidity,
-                        pressure: d.main.pressure,
-                        windSpeed: d.wind.speed * 3.6, // m/s a km/h
-                        windDir: d.wind.deg,
-                        rain: (d.rain && d.rain['1h']) ? d.rain['1h'] : 0,
-                        description: d.weather[0].description
-                    };
-                    console.log(`✅ [OWM] T:${weatherData.temp}°C H:${weatherData.humidity}%`);
-                } catch (e) {
-                    console.error("❌ OWM Error:", e.message);
-                    weatherData = this.getSimulatedWeather(); // Fallback
-                }
-            } else {
-                console.log("⚠️ No OWM Key - Usando Simulación");
-                weatherData = this.getSimulatedWeather();
-                nextInterval = 60000; // Más rápido en simulación
+            // Fallback Simulado si falla el Kit
+            env = this.getSimulatedEnvironment();
+            weather.temp = 20;
+            weather.humidity = 60;
+        }
+
+        // C. Procesar OWM (Complemento Viento/Lluvia)
+        if (owmData) {
+            weather.windSpeed = owmData.windSpeed;
+            weather.windDir = owmData.windDir;
+            weather.rain = owmData.rain;
+            weather.pressure = owmData.pressure;
+            weather.description = owmData.description;
+            // Si el kit falló pero OWM va, usamos temp de OWM
+            if (!scData) {
+                weather.temp = owmData.temp;
+                weather.humidity = owmData.humidity;
+                mode = "REAL_OWM_ONLY";
             }
+        } else {
+            // Valores por defecto si OWM falla
+            weather.windSpeed = weather.windSpeed || 5;
+            weather.windDir = weather.windDir || 0;
+            weather.rain = weather.rain || 0;
+            weather.pressure = 1013;
         }
 
-        // 2. OBTENER TRANSPORTE (TMB + Cálculo)
-        let activeLines = 0;
-        if (tmbAppId) {
-            try {
-                // Fetch simple para ver si API responde
-                const tmbUrl = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${process.env.TMB_APP_ID}&app_key=${process.env.TMB_APP_KEY}`;
-                const tmbRes = await axios.get(tmbUrl);
-                activeLines = tmbRes.data.features ? tmbRes.data.features.length : 0;
-            } catch (e) { /* Ignore */ }
-        }
-        const transportMetrics = this.calculateTransportMetrics(activeLines);
+        // D. Lógica Derivada (Tráfico y Periodo)
 
-        // 3. OBTENER AMBIENTE (Ruido/Aire - Simulado por ahora con lógica horaria compleja)
-        // Integrar API Sentilo real requeriría tokens específicos, usamos la lógica de Ordenanza BCN
-        const envMetrics = this.calculateEnvironmentalMetrics(transportMetrics.congestion);
+        // 1. Periodo (Día/Noche) basado en LUZ REAL
+        let period = "Ln"; // Noche
+        if (env.lightLevel > 0.1) period = "Ld"; // Día
+        else if (env.noiseDb > 55) period = "Le"; // Tarde/Noche activa
 
-        // 4. ACTUALIZAR ESTADO GLOBAL
+        // 2. Congestión basada en RUIDO (El ruido del MACBA mueve el "tráfico")
+        // 40dB (silencio) -> 0 congestion | 80dB (ruido) -> 10 congestion
+        let congestion = Math.max(0, Math.min(10, (env.noiseDb - 40) / 4));
+
+        // 3. Modulación por Metro (Si el metro cierra, baja un poco la actividad visual)
+        if (activeLines < 2) congestion *= 0.8;
+
+        // E. Actualizar Estado Global
         this.currentState = {
             meta: {
                 timestamp: Date.now(),
-                period: envMetrics.periodLabel,
-                mode: apiKey ? "REAL" : "SIMULATED"
+                period: period,
+                mode: mode
             },
-            weather: weatherData,
-            environment: {
-                noiseDb: envMetrics.noiseDb,
-                noiseFreq: envMetrics.noiseFreq,
-                airQuality: envMetrics.airQuality,
-                lightLevel: await this.getLightLevel()
-            },
+            weather: weather,
+            environment: env,
             transport: {
-                congestion: transportMetrics.congestion,
+                congestion: congestion,
                 activeLines: activeLines,
-                flowRhythm: transportMetrics.flowRhythm
+                flowRhythm: env.lightLevel // Ritmo visual sigue a la luz
             }
         };
 
-        this.scheduleNextUpdate(nextInterval);
+        // Actualizar cada 30 segundos
+        this.scheduleNextUpdate(30000);
     }
 
-    getSimulatedWeather() {
+    // --- SIMULACIÓN (FALLBACK) ---
+    getSimulatedEnvironment() {
+        const h = new Date().getHours();
+        const isDay = (h > 7 && h < 20);
         return {
-            temp: 18 + Math.random() * 5,
-            humidity: 50 + Math.random() * 20,
-            pressure: 1013 + (Math.random() * 10 - 5),
-            windSpeed: Math.random() * 20,
-            windDir: Math.random() * 360,
-            rain: Math.random() > 0.9 ? 5 : 0,
-            description: 'simulated'
+            noiseDb: 45 + Math.random() * 15,
+            noiseFreq: 'LOW',
+            airQuality: 20,
+            lightLevel: isDay ? 0.8 : 0.1
         };
-    }
-
-    async getLightLevel() {
-        const url = "http://127.0.0.1:5000/light-level";
-        const res = await axios.get(url);
-        return res.data['light-level'];
     }
 
     scheduleNextUpdate(delay) {
@@ -243,7 +244,7 @@ class DataEngine {
     startPolling() {
         if (this.isPolling) return;
         this.isPolling = true;
-        console.log("🚀 [DataEngine/Bio] Sistema Biométrico Iniciado.");
+        console.log("🚀 [DataEngine] Iniciando monitoreo (MACBA + OWM + TMB)...");
         this.fetchWeatherData();
     }
 
