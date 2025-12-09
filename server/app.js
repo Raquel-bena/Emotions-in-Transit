@@ -9,9 +9,6 @@ const morgan = require('morgan'); // Logging HTTP
 // Importar DataEngine (Clase)
 const DataEngine = require('./utils/dataNormalizer');
 
-// testing purposes
-(new DataEngine()).fetchPythonData().then(data => console.log(data));
-
 // Importar Rutas
 const weatherRoutes = require('./routes/weather');
 const bicingRoutes = require('./routes/bicing');
@@ -36,16 +33,17 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 // --- INICIALIZACIÓN DEL MOTOR DE DATOS ---
 const dataEngine = new DataEngine();
-// Iniciar polling automáticamente si hay API KEY o simulación
+// Iniciar polling automáticamente (Conecta al Kit Palo Alto #14129)
 dataEngine.startPolling();
 
 // --- RUTAS API ---
+// Pasamos la instancia 'dataEngine' a weatherRoutes para que comparta el estado
 app.use('/api/weather', weatherRoutes(dataEngine));
 app.use('/api/bicing', bicingRoutes);
 app.use('/api/tmb', require('./routes/tmb'));
 
 // --- RUTA CATCH-ALL PARA SPA (Vite) ---
-// Cualquier petición que no sea API, devuelve index.html
+// Cualquier petición que no sea API, devuelve index.html para que el Frontend maneje la navegación
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
 });

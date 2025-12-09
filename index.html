@@ -13,17 +13,14 @@
 <body>
   <div id="app"></div>
 
-  <!-- UI LAYER -->
   <div id="ui-layer">
 
-    <!-- WELCOME SCREEN -->
     <div id="welcome-screen">
       <h1 class="glitch-text">EMOTIONS IN TRANSIT</h1>
       <p>A BCN Data Experience</p>
       <button id="start-btn">INITIALIZE SYSTEM</button>
     </div>
 
-    <!-- LEFT PANEL: MONITOR -->
     <div id="info-panel" class="hud-panel left-panel">
       <div class="panel-header">
         <div id="clock-display">--:--</div>
@@ -33,20 +30,21 @@
 
       <div class="data-grid">
         <div class="data-item">
-          <span class="label">TEMP</span>
-          <span class="value" id="temp-val">--</span>
+          <span class="label">NOISE</span>
+          <span class="value" id="noise-val">-- dB</span>
         </div>
         <div class="data-item">
-          <span class="label">WIND</span>
-          <span class="value" id="wind-val">--</span>
+          <span class="label">CO2</span>
+          <span class="value" id="co2-val">-- ppm</span>
         </div>
+
         <div class="data-item">
-          <span class="label">RAIN</span>
-          <span class="value" id="rain-val">--</span>
+          <span class="label">LIGHT</span>
+          <span class="value" id="light-val">-- %</span>
         </div>
         <div class="data-item highlight">
           <span class="label">PULSE</span>
-          <span class="value" id="mobil-val">--</span>
+          <span class="value" id="congestion-val">-- /10</span>
         </div>
       </div>
 
@@ -55,7 +53,6 @@
       </div>
     </div>
 
-    <!-- RIGHT PANEL: LEGEND -->
     <div id="legend-panel" class="hud-panel right-panel">
       <div class="panel-header">
         <span>[KEY]</span> <span>VISUAL_DECODER</span>

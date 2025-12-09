@@ -11,7 +11,7 @@ let cache = {
 router.get('/metro', async (req, res) => {
     const NOW = Date.now();
 
-    // Servir caché si es válido (< 60s)
+    // 1. Servir caché si es válido (< 60s)
     if (cache.data && (NOW - cache.lastUpdate < 60000)) {
         return res.json(cache.data);
     }
@@ -20,27 +20,21 @@ router.get('/metro', async (req, res) => {
     const appKey = process.env.TMB_APP_KEY;
 
     if (!appId || !appKey) {
-        return res.status(500).json({ error: "Faltan credenciales TMB" });
+        return res.status(500).json({ error: "Faltan credenciales TMB en .env" });
     }
 
     try {
-        // Consultamos el estado de las líneas de Metro (L1 a L5 principalmente)
-        // Endpoint: /transit/linies/metro
+        // Consultamos estado de líneas de Metro
         const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${appId}&app_key=${appKey}`;
+        const response = await axios.get(url, { timeout: 5000 });
 
-        const response = await axios.get(url);
-
-        // Procesamos para sacar algo útil: ¿Funciona todo bien?
-        // La API devuelve una lista de líneas. Contamos cuántas hay activas.
         const lines = response.data.features;
-
-        // Calculamos un "Indice de Actividad" basado en la cantidad de líneas reportadas
-        // (Esto es una simplificación, idealmente miraríamos incidencias)
         const activeLines = lines.length;
 
         const payload = {
             active_lines: activeLines,
             status: "OK",
+            source: "TMB API",
             timestamp: new Date().toISOString()
         };
 
@@ -52,12 +46,11 @@ router.get('/metro', async (req, res) => {
 
     } catch (error) {
         console.error("❌ Error TMB API:", error.message);
-
-        // Si falla (auth o server), devolvemos datos simulados para no romper el frontend
+        // Respuesta de contingencia
         res.json({
-            active_lines: 8, // Valor por defecto
-            status: "SIMULATED",
-            error: error.response?.statusText || error.message
+            active_lines: 5,
+            status: "ERROR_FALLBACK",
+            error: error.message
         });
     }
 });
