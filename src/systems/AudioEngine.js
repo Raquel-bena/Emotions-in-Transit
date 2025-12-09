@@ -9,14 +9,14 @@ export default class AudioEngine {
     this.isStarted = false;
     this.currentEmotion = "NEUTRAL";
 
-    // 1. PAD SINTETIZADOR (Base Atmosférica)
+    // 1. PAD SINTETIZADOR (Base Atmosférica - Influenciado por Luz y CO2)
     this.padSynth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'triangle' },
       envelope: { attack: 2.0, decay: 3.0, sustain: 0.5, release: 4.0 },
       volume: -12
     });
 
-    // 2. SINTETIZADOR DE BAJOS (Drones / Tensión)
+    // 2. SINTETIZADOR DE BAJOS (Drones / Tensión - Influenciado por Solastalgia)
     this.droneSynth = new Tone.FMSynth({
       harmonicity: 0.5,
       modulationIndex: 1.2,
@@ -24,18 +24,18 @@ export default class AudioEngine {
       volume: -15
     });
 
-    // 3. SINTETIZADOR DE PULSOS (Eventos puntuales / Ira)
+    // 3. SINTETIZADOR DE PULSOS (Eventos puntuales / Ira - Influenciado por Ruido)
     this.pulseSynth = new Tone.MembraneSynth({
       pitchDecay: 0.05,
       octaves: 4,
       volume: -5
     });
 
-    // 4. CADENA DE EFECTOS
+    // 4. CADENA DE EFECTOS (Influenciados por todos los datos)
     this.reverb = new Tone.Reverb({ decay: 8, wet: 0.6 }).toDestination();
     this.filter = new Tone.Filter({ frequency: 400, type: 'lowpass', Q: 1 });
-    this.distortion = new Tone.Distortion({ distortion: 0, wet: 0 }); // Para Urban Anger
-    this.bitCrusher = new Tone.BitCrusher({ bits: 8, wet: 0 }); // Para Eco-Anxiety
+    this.distortion = new Tone.Distortion({ distortion: 0, wet: 0 }); // Para Urban Anger / Ruido Alto
+    this.bitCrusher = new Tone.BitCrusher({ bits: 8, wet: 0 }); // Para Eco-Anxiety / CO2 Alto
 
     // CONEXIONES
     this.padSynth.connect(this.filter);
@@ -63,7 +63,7 @@ export default class AudioEngine {
 
   // Bucle principal de generación musical
   startLoop() {
-    // Progresión infinita que cambia según la emoción
+    // Progresión infinita que cambia según la emoción y el ritmo
     this.loop = new Tone.Loop((time) => {
       this.playGenerativeChord(time);
     }, "4n").start(0);
@@ -83,20 +83,19 @@ export default class AudioEngine {
         // Disonante / Cluster (Rojo)
         chord = ["C3", "C#3", "F#3", "G3"];
         // Ritmo agresivo (Pulsos rápidos)
-        if (Math.random() > 0.5) this.pulseSynth.triggerAttackRelease("C2", "16n", time);
+        if (Math.random() > 0.3) this.pulseSynth.triggerAttackRelease("C2", "16n", time);
         break;
 
       case "ECO_ANXIETY":
         // Tenso / Disminuido (Verde)
         chord = ["D3", "F3", "G#3", "B3"];
-        // Glitch ocasional
         break;
 
       case "SOLASTALGIA":
         // Melancólico / Menor Extendido (Azul)
         chord = ["A2", "C3", "E3", "G3"];
         // Drone grave constante
-        this.droneSynth.triggerAttackRelease("A1", "4n", time);
+        this.droneSynth.triggerAttackRelease("A1", "2n", time);
         break;
 
       case "ACTIVE_HOPE":
@@ -106,57 +105,66 @@ export default class AudioEngine {
         break;
     }
 
-    // B. DISPARAR PAD (Solo ocasionalmente para dejar respirar)
-    if (Math.random() > 0.6) {
+    // B. DISPARAR PAD (Probabilidad influenciada por congestión)
+    // Mayor congestión = menor probabilidad de acordes largos y calmados
+    let padProbability = this.map(Tone.Transport.bpm.value, 60, 140, 0.8, 0.3);
+    if (Math.random() < padProbability) {
       this.padSynth.triggerAttackRelease(chord, "2n", time);
     }
   }
 
   /**
-   * Actualiza el motor de audio basándose en el estado completo
+   * Actualiza el motor de audio basándose en el estado completo y los datos crudos
    */
   updateFromState(state) {
     if (!this.isStarted || !state) return;
 
+    const { environment, transport, meta } = state;
+
     // 1. ACTUALIZAR EMOCIÓN
-    const newEmotion = state.meta.emotion || "NEUTRAL";
+    const newEmotion = meta.emotion || "NEUTRAL";
     if (this.currentEmotion !== newEmotion) {
       console.log(`🔊 Cambio de Audio: ${this.currentEmotion} -> ${newEmotion}`);
       this.currentEmotion = newEmotion;
-      this.applyEffectsPreset(newEmotion);
     }
 
-    // 2. MODULAR EFECTOS EN TIEMPO REAL (Parámetros continuos)
+    // 2. MODULAR EFECTOS CON DATOS CRUDOS EN TIEMPO REAL
 
-    // Temperatura -> Frecuencia del Filtro (Más calor = Sonido más abierto/brillante)
-    // 0°C -> 200Hz | 35°C -> 5000Hz
-    const cutoff = this.map(state.weather.temp, 0, 35, 200, 5000);
-    this.filter.frequency.rampTo(cutoff, 2);
+    // LUZ -> FRECUENCIA DEL FILTRO y BRILLO
+    // Más luz = sonido más abierto y brillante. Menos luz = más cerrado y opaco.
+    const cutoff = this.map(environment.lightLevel, 0, 1, 200, 8000);
+    this.filter.frequency.rampTo(cutoff, 1);
 
-    // Humedad -> Reverb (Más humedad = Más denso/mojado)
-    const verbWet = this.map(state.weather.humidity, 0, 100, 0.2, 0.9);
+    // CO2 -> BITCRUSHER (Toxicidad digital)
+    // Más CO2 = más destrucción digital del sonido.
+    const crushWet = this.map(environment.co2, 400, 1200, 0, 0.8, true); // Clamp true
+    this.bitCrusher.wet.rampTo(crushWet, 1);
+    const bits = this.map(environment.co2, 400, 1200, 8, 3, true); // Menos bits = más roto
+    this.bitCrusher.bits = bits;
+
+    // RUIDO -> DISTORSIÓN y VOLUMEN PULSOS
+    // Más ruido = más distorsión agresiva y pulsos más fuertes.
+    const distWet = this.map(environment.noiseDb, 40, 90, 0, 0.6, true);
+    this.distortion.wet.rampTo(distWet, 0.5);
+    const pulseVol = this.map(environment.noiseDb, 40, 90, -20, -2, true);
+    this.pulseSynth.volume.rampTo(pulseVol, 0.5);
+
+    // CONGESTIÓN -> TEMPO (BPM)
+    // Mayor congestión = tempo más rápido.
+    const newBpm = this.map(transport.congestion, 0, 10, 60, 140, true);
+    Tone.Transport.bpm.rampTo(newBpm, 2);
+
+    // HUMEDAD (Clima) -> REVERB
+    // Más humedad = sonido más "mojado" y denso.
+    const verbWet = this.map(state.weather.humidity, 0, 100, 0.2, 0.8);
     this.reverb.wet.rampTo(verbWet, 2);
   }
 
-  applyEffectsPreset(emotion) {
-    // Ajusta los efectos "destructivos" según la emoción
-    switch (emotion) {
-      case "URBAN_ANGER":
-        this.distortion.wet.rampTo(0.4, 1); // Distorsión sucia
-        this.bitCrusher.wet.rampTo(0, 1);
-        break;
-      case "ECO_ANXIETY":
-        this.distortion.wet.rampTo(0, 1);
-        this.bitCrusher.wet.rampTo(0.6, 1); // Sonido roto digital
-        break;
-      default: // Hope / Solastalgia
-        this.distortion.wet.rampTo(0, 2); // Sonido limpio
-        this.bitCrusher.wet.rampTo(0, 2);
-        break;
+  map(value, inMin, inMax, outMin, outMax, clamp = false) {
+    let mappedValue = (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+    if (clamp) {
+      mappedValue = Math.max(outMin, Math.min(outMax, mappedValue));
     }
-  }
-
-  map(value, inMin, inMax, outMin, outMax) {
-    return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+    return mappedValue;
   }
 }

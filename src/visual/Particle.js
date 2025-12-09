@@ -1,4 +1,6 @@
 // src/visual/Particle.js
+
+// Clase existente para los agentes de la retícula ( GridAgent )
 export class GridAgent {
     constructor(p, x, y, size) {
         this.p = p;
@@ -101,5 +103,44 @@ export class GridAgent {
         }
 
         this.p.pop();
+    }
+}
+
+// --- NUEVA CLASE PARA PARTÍCULAS DE CO2 ---
+export class Co2Particle {
+    constructor(p) {
+        this.p = p;
+        this.pos = p.createVector(p.random(p.width), p.random(p.height));
+        this.vel = p.createVector(p.random(-0.5, 0.5), p.random(-0.5, 0.5));
+        this.size = p.random(2, 5);
+        this.alpha = p.random(50, 150);
+        this.color = p.color(100, 100, 100, this.alpha); // Gris base
+    }
+
+    update(co2Level, emotion) {
+        // Color y opacidad según CO2 y emoción
+        if (emotion === "ECO_ANXIETY") {
+            this.color = this.p.color(50, 200, 50, this.alpha); // Verde tóxico
+        } else {
+            // Gris más oscuro a mayor CO2
+            let gray = this.p.map(co2Level, 400, 1200, 150, 50, true);
+            this.color = this.p.color(gray, gray, gray, this.alpha);
+        }
+
+        // Movimiento afectado por nivel de CO2 (más CO2 = más agitación)
+        let speedMult = this.p.map(co2Level, 400, 1200, 0.5, 2.0, true);
+        this.pos.add(p5.Vector.mult(this.vel, speedMult));
+
+        // Reaparecer en el otro lado si salen de la pantalla
+        if (this.pos.x < 0) this.pos.x = this.p.width;
+        if (this.pos.x > this.p.width) this.pos.x = 0;
+        if (this.pos.y < 0) this.pos.y = this.p.height;
+        if (this.pos.y > this.p.height) this.pos.y = 0;
+    }
+
+    display() {
+        this.p.noStroke();
+        this.p.fill(this.color);
+        this.p.ellipse(this.pos.x, this.pos.y, this.size);
     }
 }

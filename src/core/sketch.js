@@ -1,10 +1,12 @@
 import * as Tone from 'tone';
-import { GridAgent } from '../visual/Particle.js';
+import { GridAgent, Co2Particle } from '../visual/Particle.js'; // Importamos Co2Particle
 // 1. IMPORTAR EL MOTOR DE AUDIO
 import AudioEngine from '../systems/AudioEngine.js';
 
 // --- CONFIGURACIÓN GLOBAL ---
 let agents = [];
+let co2Particles = []; // Array para partículas de CO2
+const numCo2Particles = 100; // Cantidad de partículas de CO2
 let guiParams = {
   gridSize: 30,
   showGridLines: true,
@@ -28,8 +30,9 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   textFont('Space Mono');
 
-  // 1. INICIALIZAR GRID
+  // 1. INICIALIZAR GRID Y PARTÍCULAS
   initGrid();
+  initCo2Particles(); // Inicializar partículas de CO2
 
   // 2. EVENTOS DE INTERFAZ
   const startBtn = document.getElementById('start-btn');
@@ -55,31 +58,42 @@ function initGrid() {
   }
 }
 
+function initCo2Particles() {
+  co2Particles = [];
+  for (let i = 0; i < numCo2Particles; i++) {
+    co2Particles.push(new Co2Particle(window));
+  }
+}
+
 // --- DRAW (BUCLE DE RENDERIZADO) ---
 function draw() {
   // Obtener la emoción actual calculada por el Backend
   let mode = state.meta.emotion || "ACTIVE_HOPE";
 
-  // A. ATMÓSFERA VISUAL (Fondo y Color)
+  // A. ATMÓSFERA VISUAL (Fondo y Color - Influenciado por LUZ)
+  // La luz controla el brillo base del fondo.
+  let bgColor = color(10, 12, 16); // Color base oscuro
+  let lightBrightness = map(state.environment.lightLevel, 0, 1, 0, 50); // Aumenta brillo con luz
+
   if (mode === "URBAN_ANGER") {
     // Ira: Rojo oscuro, parpadeo agresivo si el ruido es extremo
     let flash = (state.environment.noiseDb > 75 && frameCount % 8 === 0) ? 60 : 0;
-    background(25 + flash, 0, 0);
+    background(25 + flash + lightBrightness, 0, 0);
     guiParams.baseColor = '#ff0000';
   }
   else if (mode === "ECO_ANXIETY") {
     // Ansiedad: Verde tóxico oscuro, vibrante
-    background(15, 20, 5);
+    background(15 + lightBrightness, 20 + lightBrightness, 5 + lightBrightness);
     guiParams.baseColor = '#ccff00';
   }
   else if (mode === "SOLASTALGIA") {
-    // Duelo: Azul grisáceo con estelas (Alpha bajo en background)
-    background(10, 15, 20, 30);
+    // Duelo: Azul grisáceo con estelas (Alpha bajo en background), menos brillo por luz
+    background(10 + lightBrightness * 0.5, 15 + lightBrightness * 0.5, 20 + lightBrightness * 0.5, 30);
     guiParams.baseColor = '#4a6b8a';
   }
   else { // ACTIVE_HOPE
-    // Esperanza: Cian/Negro limpio, alta definición
-    background(10, 12, 16);
+    // Esperanza: Cian/Negro limpio, alta definición, más brillo por luz
+    background(10 + lightBrightness, 12 + lightBrightness, 16 + lightBrightness);
     guiParams.baseColor = '#00f0ff';
   }
 
@@ -93,38 +107,82 @@ function draw() {
     for (let y = 0; y <= height; y += guiParams.gridSize) line(0, y, width, y);
   }
 
-  // C. ACTUALIZAR AGENTES (Tráfico de Datos)
+  // C. VISUALIZACIÓN DE RUIDO (Onda Sonora Central)
+  drawNoiseWave();
+
+  // D. ACTUALIZAR Y DIBUJAR AGENTES DEL GRID (Tráfico de Datos)
   for (let agent of agents) {
-    // Modificadores físicos según emoción
+    // Modificadores físicos según emoción y congestión
+    let speedBase = 1.2;
+    if (mode === "URBAN_ANGER") speedBase = 3.5;
+    else if (mode === "SOLASTALGIA") speedBase = 0.4;
+
+    // La congestión acelera todo globalmente
+    agent.speedMult = speedBase * map(state.transport.congestion, 0, 10, 0.8, 2.0);
+
     if (mode === "URBAN_ANGER") {
-      agent.speedMult = 3.5; // Velocidad frenética
-      agent.jitter = 0;
+      agent.jitter = map(state.environment.noiseDb, 60, 90, 0, 5, true); // Jitter por ruido
     }
     else if (mode === "ECO_ANXIETY") {
-      agent.speedMult = 1.0;
-      // Temblor nervioso (Jitter)
-      agent.pos.x += random(-2, 2);
-      agent.pos.y += random(-2, 2);
+      // Temblor nervioso (Jitter) constante
+      agent.pos.x += random(-1.5, 1.5);
+      agent.pos.y += random(-1.5, 1.5);
     }
     else if (mode === "SOLASTALGIA") {
-      agent.speedMult = 0.4; // Lentitud pesada
       agent.pos.y += 0.8; // Efecto gravedad/lágrima
-    }
-    else {
-      agent.speedMult = 1.2; // Flujo armónico
     }
 
     agent.update(state);
     agent.display();
   }
 
-  // D. POST-PROCESADO (Filtros de Percepción)
-  if (mode === "SOLASTALGIA" || mode === "ECO_ANXIETY") {
-    // Bruma mental/ambiental
-    let blurIntensity = map(state.weather.humidity, 50, 100, 2, 5);
+  // E. ACTUALIZAR Y DIBUJAR PARTÍCULAS DE CO2
+  // Su visibilidad y comportamiento dependen del nivel de CO2
+  if (state.environment.co2 > 500 || mode === "ECO_ANXIETY") {
+    for (let p of co2Particles) {
+      p.update(state.environment.co2, mode);
+      p.display();
+    }
+  }
+
+  // F. POST-PROCESADO (Filtros de Percepción)
+  if (mode === "SOLASTALGIA" || mode === "ECO_ANXIETY" || state.environment.co2 > 800) {
+    // Bruma mental/ambiental si hay ansiedad, solastalgia o CO2 alto
+    let blurIntensity = map(state.weather.humidity, 50, 100, 1, 3) + map(state.environment.co2, 800, 1200, 0, 3, true);
     filter(BLUR, blurIntensity);
   }
 }
+
+// --- FUNCIÓN PARA DIBUJAR ONDA DE RUIDO ---
+function drawNoiseWave() {
+  push();
+  translate(width / 2, height / 2);
+  noFill();
+
+  let noiseLevel = state.environment.noiseDb;
+  let amplitude = map(noiseLevel, 40, 90, 10, 200, true);
+  let colorWave = color(guiParams.baseColor);
+
+  // Color rojo y temblor si el ruido es muy alto
+  if (noiseLevel > 75) {
+    colorWave = color(255, 50, 50);
+    rotate(random(-0.05, 0.05));
+  }
+  colorWave.setAlpha(150);
+  stroke(colorWave);
+  strokeWeight(map(noiseLevel, 40, 90, 2, 8, true));
+
+  beginShape();
+  for (let i = 0; i < TWO_PI; i += 0.1) {
+    let r = amplitude + random(-amplitude * 0.1, amplitude * 0.1); // Un poco de ruido en la onda
+    let x = r * cos(i);
+    let y = r * sin(i);
+    vertex(x, y);
+  }
+  endShape(CLOSE);
+  pop();
+}
+
 
 // --- LÓGICA DE DATOS ---
 async function getWeatherData() {
@@ -139,7 +197,7 @@ async function getWeatherData() {
       Object.assign(state.environment, data.environment);
       Object.assign(state.transport, data.transport);
 
-      // 2. Actualizar Sistema de Audio (Conexión Bio-Acústica)
+      // 2. Actualizar Sistema de Audio (Conexión Bio-Acústica Direccta)
       if (isAudioStarted) {
         audioSys.updateFromState(state);
       }
@@ -201,6 +259,7 @@ function initAudioEngine() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   initGrid();
+  initCo2Particles(); // Reinicializar partículas de CO2 al cambiar tamaño
 }
 
 // Exponer globalmente para p5.js (Modo Global)
