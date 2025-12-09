@@ -1,137 +1,162 @@
-// Archivo: js/audio/AudioEngine.js
+import * as Tone from 'tone';
 
 /**
- * Motor de audio para "Emotions in Transit"
- * Sintetiza estados emocionales urbanos mediante sonido ambiental, eventos y efectos.
+ * MOTOR DE AUDIO BIOMÉTRICO
+ * Sintetiza el paisaje sonoro emocional de Barcelona.
  */
-class AudioEngine {
+export default class AudioEngine {
   constructor() {
     this.isStarted = false;
+    this.currentEmotion = "NEUTRAL";
 
-    // --- SINTETIZADORES ---
-    // Pad ambiental (fondo emocional continuo)
+    // 1. PAD SINTETIZADOR (Base Atmosférica)
     this.padSynth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'triangle' },
-      envelope: { attack: 2.0, decay: 1.0, sustain: 0.4, release: 4.0 },
-      volume: -12 // Evita saturación
+      envelope: { attack: 2.0, decay: 3.0, sustain: 0.5, release: 4.0 },
+      volume: -12
     });
 
-    // Sintetizador de eventos (ej. llegada de bus, pico de emoción)
+    // 2. SINTETIZADOR DE BAJOS (Drones / Tensión)
+    this.droneSynth = new Tone.FMSynth({
+      harmonicity: 0.5,
+      modulationIndex: 1.2,
+      envelope: { attack: 4, decay: 2, sustain: 1, release: 5 },
+      volume: -15
+    });
+
+    // 3. SINTETIZADOR DE PULSOS (Eventos puntuales / Ira)
     this.pulseSynth = new Tone.MembraneSynth({
-      pitchDecay: 0.04,
-      octaves: 3,
-      envelope: { attack: 0.01, decay: 0.4, sustain: 0 },
-      volume: -6
+      pitchDecay: 0.05,
+      octaves: 4,
+      volume: -5
     });
 
-    // --- EFECTOS ---
-    this.reverb = new Tone.Reverb({ decay: 6, wet: 0.5 }).toDestination();
-    this.filter = new Tone.Filter({ frequency: 800, type: 'lowpass' });
-    this.crusher = new Tone.BitCrusher({ bits: 3, wet: 0 });
+    // 4. CADENA DE EFECTOS
+    this.reverb = new Tone.Reverb({ decay: 8, wet: 0.6 }).toDestination();
+    this.filter = new Tone.Filter({ frequency: 400, type: 'lowpass', Q: 1 });
+    this.distortion = new Tone.Distortion({ distortion: 0, wet: 0 }); // Para Urban Anger
+    this.bitCrusher = new Tone.BitCrusher({ bits: 8, wet: 0 }); // Para Eco-Anxiety
 
-    // --- ROUTING ---
-    // El pad pasa por filtro → glitch → reverb
-    this.padSynth.chain(this.filter, this.crusher, this.reverb);
-    // El pulso va directo a reverb (más claro)
-    this.pulseSynth.connect(this.reverb);
+    // CONEXIONES
+    this.padSynth.connect(this.filter);
+    this.droneSynth.connect(this.filter);
 
-    // Estado interno para evitar eventos repetidos
-    this.glitchActive = false;
-    this.lastBusTrigger = 0;
-    this.busCooldown = 2000; // 2s entre triggers
+    // La salida del filtro va a los efectos destructivos y luego a la reverb
+    this.filter.chain(this.distortion, this.bitCrusher, this.reverb);
+    this.pulseSynth.connect(this.reverb); // Pulsos limpios con eco
+
+    // BUCLES
+    this.loop = null;
   }
 
   async start() {
     if (this.isStarted) return;
-
     try {
       await Tone.start();
       this.isStarted = true;
-      console.log('🔊 AudioEngine: listo y en modo interacción.');
-      this.startAmbience();
-    } catch (err) {
-      console.warn('🔇 AudioEngine: interacción necesaria para iniciar (ej. clic del usuario).', err);
+      console.log('🔊 AudioEngine: Iniciado.');
+      this.startLoop();
+    } catch (e) {
+      console.error('Audio start error:', e);
     }
   }
 
-  startAmbience() {
-    if (!this.isStarted) return;
+  // Bucle principal de generación musical
+  startLoop() {
+    // Progresión infinita que cambia según la emoción
+    this.loop = new Tone.Loop((time) => {
+      this.playGenerativeChord(time);
+    }, "4n").start(0);
 
-    // Acordes que evolucionan suavemente
-    const chords = [
-      ['C3', 'E3', 'G3', 'B3'], // Mayor: sereno
-      ['D3', 'F3', 'A3', 'C4'], // Menor: introspectivo
-      ['F3', 'A3', 'C4', 'E4'],
-      ['G3', 'B3', 'D4', 'F4']
-    ];
-    let chordIndex = 0;
-
-    this.ambienceInterval = setInterval(() => {
-      if (!this.isStarted) return;
-      const chord = chords[chordIndex];
-      this.padSynth.triggerAttackRelease(chord, '4n');
-      chordIndex = (chordIndex + 1) % chords.length;
-    }, 8000); // Cambio cada 8s → más pausado, más "respiración"
+    Tone.Transport.start();
   }
 
-  triggerBusArrival() {
+  playGenerativeChord(time) {
     if (!this.isStarted) return;
 
-    const now = Date.now();
-    if (now - this.lastBusTrigger < this.busCooldown) return; // Evita sobrecarga
+    // A. SELECCIÓN DE ACORDES SEGÚN EMOCIÓN
+    let chord = [];
+    let root = "C3";
 
-    this.lastBusTrigger = now;
-    this.pulseSynth.triggerAttackRelease('C2', '8n');
-  }
+    switch (this.currentEmotion) {
+      case "URBAN_ANGER":
+        // Disonante / Cluster (Rojo)
+        chord = ["C3", "C#3", "F#3", "G3"];
+        // Ritmo agresivo (Pulsos rápidos)
+        if (Math.random() > 0.5) this.pulseSynth.triggerAttackRelease("C2", "16n", time);
+        break;
 
-  setGlitchMode(isActive) {
-    if (!this.isStarted || this.glitchActive === isActive) return;
+      case "ECO_ANXIETY":
+        // Tenso / Disminuido (Verde)
+        chord = ["D3", "F3", "G#3", "B3"];
+        // Glitch ocasional
+        break;
 
-    this.glitchActive = isActive;
-    const targetWet = isActive ? 0.7 : 0;
-    this.crusher.wet.rampTo(targetWet, 0.6); // Transición suave
+      case "SOLASTALGIA":
+        // Melancólico / Menor Extendido (Azul)
+        chord = ["A2", "C3", "E3", "G3"];
+        // Drone grave constante
+        this.droneSynth.triggerAttackRelease("A1", "4n", time);
+        break;
 
-    if (isActive) {
-      console.log('🌀 Modo Glitch activado: alta entropía emocional');
+      case "ACTIVE_HOPE":
+      default:
+        // Luminoso / Mayor con Séptima (Dorado)
+        chord = ["C3", "E3", "G3", "B3"];
+        break;
+    }
+
+    // B. DISPARAR PAD (Solo ocasionalmente para dejar respirar)
+    if (Math.random() > 0.6) {
+      this.padSynth.triggerAttackRelease(chord, "2n", time);
     }
   }
 
   /**
-   * Actualiza parámetros sonoros desde datos ambientales.
-   * @param {Object} data - Objeto con clima, movilidad, etc.
+   * Actualiza el motor de audio basándose en el estado completo
    */
-  updateFromData(data) {
-    if (!this.isStarted || !data) return;
+  updateFromState(state) {
+    if (!this.isStarted || !state) return;
 
-    const { temp, humidity, bikeActivity } = data;
+    // 1. ACTUALIZAR EMOCIÓN
+    const newEmotion = state.meta.emotion || "NEUTRAL";
+    if (this.currentEmotion !== newEmotion) {
+      console.log(`🔊 Cambio de Audio: ${this.currentEmotion} -> ${newEmotion}`);
+      this.currentEmotion = newEmotion;
+      this.applyEffectsPreset(newEmotion);
+    }
 
-    // 1. FILTRO ↔ TEMPERATURA
-    // Frío (0°C) → sonido opaco (200Hz); Calor (40°C) → brillante (3000Hz)
-    const filterFreq = this.mapRange(temp, 0, 40, 200, 3000);
-    this.filter.frequency.rampTo(filterFreq, 1.5);
+    // 2. MODULAR EFECTOS EN TIEMPO REAL (Parámetros continuos)
 
-    // 2. GLITCH ↔ HUMEDAD (alta humedad = distorsión emocional)
-    const shouldGlitch = humidity > 80;
-    this.setGlitchMode(shouldGlitch);
+    // Temperatura -> Frecuencia del Filtro (Más calor = Sonido más abierto/brillante)
+    // 0°C -> 200Hz | 35°C -> 5000Hz
+    const cutoff = this.map(state.weather.temp, 0, 35, 200, 5000);
+    this.filter.frequency.rampTo(cutoff, 2);
 
-    // 3. VOLUMEN DEL PAD ↔ ACTIVIDAD (menos movimiento = más introspectivo)
-    if (typeof bikeActivity === 'number') {
-      const padVolume = this.mapRange(bikeActivity, 0, 500, -20, -10); // Ajusta según tus datos
-      this.padSynth.volume.rampTo(padVolume, 2);
+    // Humedad -> Reverb (Más humedad = Más denso/mojado)
+    const verbWet = this.map(state.weather.humidity, 0, 100, 0.2, 0.9);
+    this.reverb.wet.rampTo(verbWet, 2);
+  }
+
+  applyEffectsPreset(emotion) {
+    // Ajusta los efectos "destructivos" según la emoción
+    switch (emotion) {
+      case "URBAN_ANGER":
+        this.distortion.wet.rampTo(0.4, 1); // Distorsión sucia
+        this.bitCrusher.wet.rampTo(0, 1);
+        break;
+      case "ECO_ANXIETY":
+        this.distortion.wet.rampTo(0, 1);
+        this.bitCrusher.wet.rampTo(0.6, 1); // Sonido roto digital
+        break;
+      default: // Hope / Solastalgia
+        this.distortion.wet.rampTo(0, 2); // Sonido limpio
+        this.bitCrusher.wet.rampTo(0, 2);
+        break;
     }
   }
 
-  // Utilidad interna (evita dependencia global)
-  mapRange(value, inMin, inMax, outMin, outMax) {
-    return outMin + ((outMax - outMin) * (value - inMin)) / (inMax - inMin);
-  }
-
-  // Limpieza al destruir (opcional, útil en apps complejas)
-  dispose() {
-    if (this.ambienceInterval) {
-      clearInterval(this.ambienceInterval);
-    }
-    Tone.Transport.stop();
-    // Aquí podrías llamar a .dispose() en cada módulo si es necesario
+  map(value, inMin, inMax, outMin, outMax) {
+    return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
   }
 }

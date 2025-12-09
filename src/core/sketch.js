@@ -1,5 +1,7 @@
 import * as Tone from 'tone';
 import { GridAgent } from '../visual/Particle.js';
+// 1. IMPORTAR EL MOTOR DE AUDIO
+import AudioEngine from '../systems/AudioEngine.js';
 
 // --- CONFIGURACIÓN GLOBAL ---
 let agents = [];
@@ -9,7 +11,8 @@ let guiParams = {
   baseColor: '#0b0c10'
 };
 
-// --- AUDIO ---
+// --- AUDIO SYSTEM ---
+let audioSys = new AudioEngine(); // Instancia del motor de audio
 let isAudioStarted = false;
 
 // --- ESTADO BIOMÉTRICO (Espejo del backend) ---
@@ -25,17 +28,16 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   textFont('Space Mono');
 
-  // 1. INIT
+  // 1. INICIALIZAR GRID
   initGrid();
 
-  // 2. EVENTS
+  // 2. EVENTOS DE INTERFAZ
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', initAudioEngine);
 
-  // 3. DATA POLLING
+  // 3. POLLING DE DATOS (Cada 4 segundos para mayor reactividad)
   getWeatherData();
-  // Polling rápido (5s) para captar cambios de ruido/emoción
-  setInterval(getWeatherData, 5000);
+  setInterval(getWeatherData, 4000);
   setInterval(updateClock, 1000);
 }
 
@@ -53,96 +55,100 @@ function initGrid() {
   }
 }
 
-// --- DRAW (RENDER LOOP) ---
+// --- DRAW (BUCLE DE RENDERIZADO) ---
 function draw() {
-  // 1. INTERPRETACIÓN EMOCIONAL (Visuales)
+  // Obtener la emoción actual calculada por el Backend
   let mode = state.meta.emotion || "ACTIVE_HOPE";
 
-  // A. FONDO Y ATMÓSFERA
+  // A. ATMÓSFERA VISUAL (Fondo y Color)
   if (mode === "URBAN_ANGER") {
-    // Ira: Rojo oscuro, parpadeo agresivo (Strobing) si hay mucho ruido
-    let flash = (state.environment.noiseDb > 75 && frameCount % 10 === 0) ? 50 : 0;
-    background(20 + flash, 0, 0);
+    // Ira: Rojo oscuro, parpadeo agresivo si el ruido es extremo
+    let flash = (state.environment.noiseDb > 75 && frameCount % 8 === 0) ? 60 : 0;
+    background(25 + flash, 0, 0);
     guiParams.baseColor = '#ff0000';
   }
   else if (mode === "ECO_ANXIETY") {
-    // Ansiedad: Verde tóxico oscuro
-    background(10, 15, 5);
+    // Ansiedad: Verde tóxico oscuro, vibrante
+    background(15, 20, 5);
     guiParams.baseColor = '#ccff00';
   }
   else if (mode === "SOLASTALGIA") {
-    // Duelo: Azul grisáceo, estelas (no borramos el fondo completamente)
-    background(5, 5, 10, 20); // Alpha bajo crea "trails"
+    // Duelo: Azul grisáceo con estelas (Alpha bajo en background)
+    background(10, 15, 20, 30);
     guiParams.baseColor = '#4a6b8a';
   }
-  else { // ACTIVE_HOPE (Default)
-    // Esperanza: Cian/Negro limpio
-    background(10, 12, 15);
+  else { // ACTIVE_HOPE
+    // Esperanza: Cian/Negro limpio, alta definición
+    background(10, 12, 16);
     guiParams.baseColor = '#00f0ff';
   }
 
-  // B. GRID (Estructura de la ciudad)
+  // B. DIBUJAR ESTRUCTURA (GRID)
   if (guiParams.showGridLines) {
-    // Color de líneas según emoción
     let gridColor = color(guiParams.baseColor);
-    gridColor.setAlpha(30);
+    gridColor.setAlpha(35);
     stroke(gridColor);
     strokeWeight(1);
     for (let x = 0; x <= width; x += guiParams.gridSize) line(x, 0, x, height);
     for (let y = 0; y <= height; y += guiParams.gridSize) line(0, y, width, y);
   }
 
-  // C. AGENTES (Tráfico de datos)
+  // C. ACTUALIZAR AGENTES (Tráfico de Datos)
   for (let agent of agents) {
-    // Modificadores de comportamiento según emoción
+    // Modificadores físicos según emoción
     if (mode === "URBAN_ANGER") {
-      agent.speedMult = 3.0; // Frenesí
+      agent.speedMult = 3.5; // Velocidad frenética
       agent.jitter = 0;
     }
     else if (mode === "ECO_ANXIETY") {
       agent.speedMult = 1.0;
-      // Vibración nerviosa (Jitter)
-      agent.pos.x += random(-1.5, 1.5);
-      agent.pos.y += random(-1.5, 1.5);
+      // Temblor nervioso (Jitter)
+      agent.pos.x += random(-2, 2);
+      agent.pos.y += random(-2, 2);
     }
     else if (mode === "SOLASTALGIA") {
-      agent.speedMult = 0.5; // Letargo
-      agent.pos.y += 0.5; // Efecto "lágrima" / gravedad leve
+      agent.speedMult = 0.4; // Lentitud pesada
+      agent.pos.y += 0.8; // Efecto gravedad/lágrima
     }
     else {
-      agent.speedMult = 1.2; // Flujo normal armónico
+      agent.speedMult = 1.2; // Flujo armónico
     }
 
     agent.update(state);
     agent.display();
   }
 
-  // D. POST-PROCESADO (Filtros Globales)
+  // D. POST-PROCESADO (Filtros de Percepción)
   if (mode === "SOLASTALGIA" || mode === "ECO_ANXIETY") {
-    // Visión borrosa (bruma mental/ambiental)
-    // Más intenso si la humedad es alta
-    let blurAmt = map(state.weather.humidity, 50, 100, 1, 4);
-    filter(BLUR, blurAmt);
+    // Bruma mental/ambiental
+    let blurIntensity = map(state.weather.humidity, 50, 100, 2, 5);
+    filter(BLUR, blurIntensity);
   }
 }
 
-// --- LOGIC ---
+// --- LÓGICA DE DATOS ---
 async function getWeatherData() {
   try {
     const res = await fetch('/api/weather');
     if (res.ok) {
       const data = await res.json();
 
-      // Sincronizar estado Frontend con Backend
+      // 1. Actualizar Estado Visual
       Object.assign(state.meta, data.meta);
       Object.assign(state.weather, data.weather);
       Object.assign(state.environment, data.environment);
       Object.assign(state.transport, data.transport);
 
+      // 2. Actualizar Sistema de Audio (Conexión Bio-Acústica)
+      if (isAudioStarted) {
+        audioSys.updateFromState(state);
+      }
+
+      // 3. Actualizar DOM (Textos)
       updateDOM();
     }
   } catch (e) {
-    console.error("Data Fetch Error:", e);
+    console.error("Data Error:", e);
   }
 }
 
@@ -152,7 +158,7 @@ function updateDOM() {
     if (el) el.innerText = v;
   };
 
-  // Panel Izquierdo (Mapeo exacto a tu nuevo HTML)
+  // Mapeo de datos al HTML
   setTxt('noise-val', state.environment.noiseDb.toFixed(1) + " dB");
 
   const co2 = state.environment.co2 || 400;
@@ -163,7 +169,7 @@ function updateDOM() {
 
   setTxt('congestion-val', state.transport.congestion.toFixed(1) + " / 10");
 
-  // Footer: Mostrar el estado emocional actual
+  // Mostrar emoción dominante en el footer
   const emotionLabel = state.meta.emotion ? state.meta.emotion.replace('_', ' ') : "STANDBY";
   setTxt('desc-val', emotionLabel);
 }
@@ -174,13 +180,21 @@ function updateClock() {
   if (el) el.innerText = d.toLocaleTimeString('en-GB');
 }
 
+// --- MOTOR DE AUDIO (Inicialización) ---
 function initAudioEngine() {
   if (isAudioStarted) return;
-  Tone.start().then(() => {
+
+  // Iniciamos el sistema de audio importado
+  audioSys.start().then(() => {
     isAudioStarted = true;
+
+    // Ocultar pantalla de bienvenida
     const overlay = document.getElementById('welcome-screen');
-    if (overlay) overlay.style.display = 'none';
-    console.log("Audio Engine Started");
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.style.display = 'none', 1000);
+    }
+    console.log("🔊 Sistema Audio-Visual Iniciado");
   });
 }
 
@@ -189,6 +203,7 @@ function windowResized() {
   initGrid();
 }
 
+// Exponer globalmente para p5.js (Modo Global)
 window.setup = setup;
 window.draw = draw;
 window.windowResized = windowResized;
