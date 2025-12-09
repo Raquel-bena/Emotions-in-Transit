@@ -1,36 +1,38 @@
 /**
- * MOTOR DE DATOS (Data Engine) - VERSIÓN DEFINITIVA
+ * MOTOR DE DATOS (Data Engine) - VERSIÓN FINAL CON INTELIGENCIA EMOCIONAL
  * Ubicación: server/utils/dataNormalizer.js
  * * INTEGRA:
- * 1. SmartCitizen Kit #14129 (Palo Alto) -> Fuente principal (Ruido, CO2, Luz, Aire)
- * 2. OpenWeatherMap (OWM) -> Respaldo climático general BCN
- * 3. TMB API -> Ritmo de la ciudad (Metro)
+ * 1. SmartCitizen Kit #14129 (Palo Alto) -> Ruido, CO2, Luz, PM2.5
+ * 2. OpenWeatherMap -> Viento, Lluvia, Temperatura
+ * 3. TMB API -> Ritmo Urbano
+ * * SALIDA:
+ * Genera un estado "biométrico" y una "emoción dominante" basada en psicobiología ambiental.
  */
 const axios = require('axios');
 
-// --- 1. CONFIGURACIÓN DEL KIT (PALO ALTO) ---
-// Usamos el 14129 porque tiene sensor de CO2 real, ideal para "emociones"
-const SC_DEVICE_ID = 14129;
+// --- 1. CONFIGURACIÓN ---
+const SC_DEVICE_ID = 14129; // Kit Palo Alto (Confiable para CO2 y Ruido)
 
-// IDs de Sensores específicos del SCK 2.1 (Palo Alto)
+// IDs de Sensores (SCK 2.1)
 const SENSORS = {
-    NOISE: 53,      // dBA (Micrófono ICS-43432 del PDF)
+    NOISE: 53,      // dBA
     LIGHT: 14,      // Lux
-    PM25: 87,       // µg/m³ (Aire)
+    PM25: 87,       // µg/m³
     TEMP: 55,       // °C
     HUMIDITY: 56,   // %
-    CO2: 10,        // ppm (Sensor CO2 dedicado)
-    ECO2: 22        // ppm (Estimado, como backup)
+    CO2: 10,        // ppm (Sensor real)
+    ECO2: 22        // ppm (Backup)
 };
 
 class DataEngine {
     constructor() {
-        // ESTADO INICIAL (Fallback seguro por si tarda en arrancar)
+        // ESTADO INICIAL
         this.currentState = {
             meta: {
                 timestamp: Date.now(),
-                period: "Ld",  // Ld=Día, Ln=Noche
-                mode: "INIT"   // REAL_PALOALTO / SIMULATED
+                period: "Ld",       // Ld (Día), Le (Tarde), Ln (Noche)
+                mode: "INIT",       // Fuente de datos
+                emotion: "NEUTRAL"  // Estado Afectivo de la Ciudad
             },
             weather: {
                 temp: 20,
@@ -42,10 +44,10 @@ class DataEngine {
                 description: 'init'
             },
             environment: {
-                noiseDb: 45,      // Base tranquila
+                noiseDb: 45,
                 noiseFreq: 'LOW',
                 airQuality: 10,
-                co2: 400,         // Aire limpio base
+                co2: 400,
                 lightLevel: 0.5
             },
             transport: {
@@ -59,47 +61,84 @@ class DataEngine {
         this.isPolling = false;
     }
 
-    // --- 2. CONEXIÓN SMARTCITIZEN (PALO ALTO) ---
+    // --- 2. LOGICA DE EMOCIONES (Investigación Científica) ---
+    calculateEmotionalState(env, weather, transport) {
+        // UMBRALES (Basados en Turner, Pihkala y Zhang & Li)
+
+        // IRA URBANA: Calor + Ruido + Congestión
+        const isHot = weather.temp > 25;
+        const isLoud = env.noiseDb > 70; // 70dB activa la amígdala
+        const isTrafficJam = transport.congestion > 7;
+
+        // ECO-ANSIEDAD: Aire Tóxico + Viento (Amenaza invisible)
+        const isToxic = env.co2 > 1000 || env.airQuality > 25;
+        const isWindy = weather.windSpeed > 30; // km/h
+
+        // SOLASTALGIA: Oscuridad diurna + Lluvia (Pérdida de confort)
+        const isRaining = weather.rain > 0;
+        const isDarkDay = env.lightLevel < 0.2 && this.getTimePeriod() !== 'Ln';
+
+        // -- DIAGNÓSTICO PRIORITARIO --
+
+        // 1. Prioridad Biológica Inmediata (Amenaza Física)
+        if (isLoud || (isHot && isTrafficJam)) {
+            return "URBAN_ANGER";
+        }
+
+        // 2. Prioridad Psicológica Latente (Amenaza Ambiental)
+        if (isToxic || isWindy) {
+            return "ECO_ANXIETY";
+        }
+
+        // 3. Estado Depresivo / Melancólico
+        if (isRaining || isDarkDay) {
+            return "SOLASTALGIA";
+        }
+
+        // 4. Homeostasis (Estado ideal)
+        return "ACTIVE_HOPE";
+    }
+
+    getTimePeriod() {
+        const h = new Date().getHours();
+        if (h >= 7 && h < 21) return 'Ld';
+        if (h >= 21 && h < 23) return 'Le';
+        return 'Ln';
+    }
+
+    // --- 3. CONEXIÓN SMARTCITIZEN ---
     async fetchSmartCitizenData() {
         try {
-            // URL con soporte opcional para Token (si lo pones en .env)
             let url = `https://api.smartcitizen.me/v0/devices/${SC_DEVICE_ID}`;
-            if (process.env.SC_API_TOKEN) {
-                url += `?token=${process.env.SC_API_TOKEN}`;
-            }
+            if (process.env.SC_API_TOKEN) url += `?token=${process.env.SC_API_TOKEN}`;
 
             const res = await axios.get(url, { timeout: 8000 });
             const sensors = res.data.data.sensors;
 
-            // Función para extraer valor seguro
             const getVal = (id) => {
                 const s = sensors.find(x => x.id === id);
                 return s ? s.value : null;
             };
 
-            // Lectura de sensores
             const noise = getVal(SENSORS.NOISE);
             const light = getVal(SENSORS.LIGHT);
             const temp = getVal(SENSORS.TEMP);
             const hum = getVal(SENSORS.HUMIDITY);
-            // Priorizamos CO2 real (ID 10), si no, usamos eCO2 (ID 22)
             const co2 = getVal(SENSORS.CO2) || getVal(SENSORS.ECO2);
 
-            // --- FILTRO DE SEGURIDAD (CRÍTICO) ---
+            // Filtro PM2.5 (Corrección de error 2777)
             let pm25 = getVal(SENSORS.PM25);
-            // El sensor PM tiene un error conocido que devuelve ~2777. Lo filtramos.
             if (pm25 > 500) {
-                console.warn(`⚠️ Corrección automática: PM2.5 saturado (${pm25}) -> Ajustado a 50.`);
+                console.warn(`⚠️ Corrección PM2.5 (${pm25} -> 50)`);
                 pm25 = 50;
             }
 
-            // Validación de integridad
-            if (noise === null) throw new Error("Sensor de ruido no responde");
+            if (noise === null) throw new Error("Sensor offline");
 
-            // Normalización Luz (0 a 1)
+            // Normalización Luz (0-1)
             const normLight = Math.min(1, Math.max(0, light / 1000));
 
-            console.log(`📡 [PALO ALTO] Ruido: ${noise.toFixed(1)}dB | CO2: ${co2}ppm | Luz: ${light}lx`);
+            console.log(`📡 [SCK Palo Alto] Ruido: ${noise.toFixed(1)}dB | CO2: ${co2}ppm | Luz: ${light}lx`);
 
             return {
                 noiseDb: noise,
@@ -111,38 +150,35 @@ class DataEngine {
             };
 
         } catch (error) {
-            console.error(`⚠️ Error Kit Palo Alto (#${SC_DEVICE_ID}):`, error.message);
-            return null; // Devuelve null para activar la simulación temporal
+            console.error(`⚠️ Error SCK: ${error.message}`);
+            return null;
         }
     }
 
-    // --- 3. CONEXIÓN CLIMA GENERAL (OpenWeatherMap) ---
+    // --- 4. CONEXIÓN OPENWEATHERMAP ---
     async fetchOWMData() {
         const apiKey = process.env.OWM_KEY;
         if (!apiKey) return null;
-
         try {
             const url = `https://api.openweathermap.org/data/2.5/weather?id=3128740&appid=${apiKey}&units=metric`;
             const res = await axios.get(url, { timeout: 5000 });
             return {
-                windSpeed: res.data.wind.speed * 3.6, // km/h
+                windSpeed: res.data.wind.speed * 3.6,
                 windDir: res.data.wind.deg,
                 rain: (res.data.rain && res.data.rain['1h']) ? res.data.rain['1h'] : 0,
                 pressure: res.data.main.pressure,
                 description: res.data.weather[0].description,
-                // Guardamos temp de respaldo
                 temp: res.data.main.temp,
                 hum: res.data.main.humidity
             };
         } catch (e) { return null; }
     }
 
-    // --- 4. CONEXIÓN TRANSPORTE (TMB Metro) ---
+    // --- 5. CONEXIÓN TMB ---
     async fetchTMBData() {
         const appId = process.env.TMB_APP_ID;
         const appKey = process.env.TMB_APP_KEY;
         if (!appId || !appKey) return 0;
-
         try {
             const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${appId}&app_key=${appKey}`;
             const res = await axios.get(url, { timeout: 5000 });
@@ -150,9 +186,8 @@ class DataEngine {
         } catch (e) { return 0; }
     }
 
-    // --- ORQUESTADOR: FUSIÓN DE DATOS ---
+    // --- 6. ORQUESTADOR PRINCIPAL ---
     async fetchWeatherData() {
-        // Ejecutamos todas las peticiones en paralelo
         const [scData, owmData, activeLines] = await Promise.all([
             this.fetchSmartCitizenData(),
             this.fetchOWMData(),
@@ -163,91 +198,78 @@ class DataEngine {
         let env = {};
         let mode = "SIMULATED";
 
-        // A. PROCESAMIENTO DEL SENSOR (Prioridad absoluta)
+        // A. FUSIÓN DE DATOS (SCK + OWM)
         if (scData) {
             mode = "REAL_PALOALTO";
             env = {
                 noiseDb: scData.noiseDb,
-                // Análisis de frecuencia simple basado en intensidad
-                noiseFreq: scData.noiseDb > 60 ? 'HIGH' : (scData.noiseDb > 45 ? 'MID' : 'LOW'),
+                noiseFreq: scData.noiseDb > 65 ? 'HIGH' : 'LOW',
                 airQuality: scData.airQuality,
                 co2: scData.co2,
                 lightLevel: scData.lightLevel
             };
-            // Usamos la temperatura real del sitio si existe
             weather.temp = scData.temp || 20;
             weather.humidity = scData.humidity || 50;
         } else {
-            // Si el sensor falla, entramos en modo simulación suave
             env = this.getSimulatedEnvironment();
-            weather.temp = 20;
-            weather.humidity = 60;
+            weather.temp = 20; weather.humidity = 60;
         }
 
-        // B. PROCESAMIENTO CLIMÁTICO (Relleno)
         if (owmData) {
             weather.windSpeed = owmData.windSpeed;
             weather.windDir = owmData.windDir;
             weather.rain = owmData.rain;
             weather.pressure = owmData.pressure;
             weather.description = owmData.description;
-
-            // Si el sensor falló pero OWM funciona, usamos temp de OWM
             if (!scData) {
                 weather.temp = owmData.temp;
                 weather.humidity = owmData.hum;
                 mode = "REAL_OWM_ONLY";
             }
         } else {
-            weather.windSpeed = 5; weather.rain = 0; // Valores seguros
+            weather.windSpeed = 5; weather.rain = 0;
         }
 
-        // C. CÁLCULO DE "EMOCIONES" (Mapeo de Datos a Visuales)
+        // B. CÁLCULOS DERIVADOS
 
-        // 1. Periodo (Día/Noche): Lo define la LUZ real, no el reloj
-        let period = "Ln"; // Noche por defecto
-        if (env.lightLevel > 0.1) period = "Ld"; // Día
-        else if (env.noiseDb > 50) period = "Le"; // Noche urbana activa
-
-        // 2. Congestión (Estrés del sistema):
-        // Mezclamos Ruido (Agitación) + CO2 (Ambiente cargado)
-        // 400ppm CO2 = Aire puro (0.0) | 1000ppm = Aire viciado (1.0)
+        // Congestión (Estrés Visual): Mezcla de Ruido (70%) + CO2 (30%)
         const co2Stress = Math.max(0, Math.min(1, (env.co2 - 400) / 600));
-        // 40dB = Silencio (0.0) | 80dB = Ruido fuerte (1.0)
         const noiseStress = Math.max(0, Math.min(1, (env.noiseDb - 40) / 40));
-
-        // Fórmula ponderada: 70% Ruido, 30% CO2
         let congestion = ((noiseStress * 0.7) + (co2Stress * 0.3)) * 10;
+        if (activeLines < 2) congestion *= 0.6; // Si el metro duerme, la ciudad se calma
 
-        // Si el Metro (TMB) está cerrado (<2 líneas), relajamos el sistema
-        if (activeLines < 2) congestion *= 0.6;
+        // Periodo (Día/Noche según Luz real)
+        let period = "Ln";
+        if (env.lightLevel > 0.1) period = "Ld";
+        else if (env.noiseDb > 55) period = "Le";
 
-        // D. ACTUALIZACIÓN FINAL
+        // C. DIAGNÓSTICO EMOCIONAL (La nueva inteligencia del sistema)
+        const emotionalState = this.calculateEmotionalState(env, weather, { congestion });
+
+        // ACTUALIZACIÓN GLOBAL
         this.currentState = {
             meta: {
                 timestamp: Date.now(),
                 period: period,
-                mode: mode
+                mode: mode,
+                emotion: emotionalState // ¡Nueva variable clave!
             },
             weather: weather,
             environment: env,
             transport: {
-                congestion: Math.max(0, Math.min(10, congestion)), // Clamp 0-10
+                congestion: Math.max(0, Math.min(10, congestion)),
                 activeLines: activeLines,
-                flowRhythm: env.lightLevel // La luz marca el ritmo visual
+                flowRhythm: env.lightLevel
             }
         };
 
-        // Recarga cada 60 segundos (Palo Alto actualiza cada minuto aprox)
         this.scheduleNextUpdate(60000);
     }
 
-    // --- SIMULACIÓN DE RESPALDO ---
     getSimulatedEnvironment() {
         const h = new Date().getHours();
         return {
             noiseDb: 45 + Math.random() * 10,
-            noiseFreq: 'LOW',
             airQuality: 20,
             co2: 420,
             lightLevel: (h > 7 && h < 20) ? 0.8 : 0.05
@@ -263,7 +285,7 @@ class DataEngine {
     startPolling() {
         if (this.isPolling) return;
         this.isPolling = true;
-        console.log("🚀 [DataEngine] Sistema Iniciado. Conectando a Palo Alto...");
+        console.log("🚀 [DataEngine] Iniciando Sistema Biométrico (Palo Alto + EmotionAI)...");
         this.fetchWeatherData();
     }
 

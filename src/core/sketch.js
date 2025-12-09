@@ -1,5 +1,4 @@
 import * as Tone from 'tone';
-import { Pane } from 'tweakpane';
 import { GridAgent } from '../visual/Particle.js';
 
 // --- CONFIGURACIÓN GLOBAL ---
@@ -7,19 +6,17 @@ let agents = [];
 let guiParams = {
   gridSize: 30,
   showGridLines: true,
-  bloomStrength: 0.5,
   baseColor: '#0b0c10'
 };
 
-// --- AUDIO (Placeholder) ---
-let synth, filter, reverb;
+// --- AUDIO ---
 let isAudioStarted = false;
 
 // --- ESTADO BIOMÉTRICO (Espejo del backend) ---
 let state = {
-  meta: { period: 'Ld', timestamp: 0 },
+  meta: { period: 'Ld', timestamp: 0, mode: 'INIT', emotion: 'NEUTRAL' },
   weather: { temp: 20, humidity: 50, windSpeed: 10, windDir: 0, rain: 0 },
-  environment: { noiseDb: 50, airQuality: 10 },
+  environment: { noiseDb: 45, airQuality: 10, co2: 400, lightLevel: 0.5 },
   transport: { congestion: 5, flowRhythm: 0.5 }
 };
 
@@ -28,34 +25,17 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   textFont('Space Mono');
 
-  // 1. SETUP GUI (Tweakpane)
-  const pane = new Pane({ title: 'BIOMETRIC_CITY_CORE' });
-
-  const fView = pane.addFolder({ title: 'VIEWPORT' });
-  fView.addBinding(guiParams, 'gridSize', { min: 15, max: 60, step: 5 }).on('change', initGrid);
-  fView.addBinding(guiParams, 'showGridLines');
-
-  const fData = pane.addFolder({ title: 'LIVE DATA (Read-Only / Override)' });
-  // Weather
-  fData.addBinding(state.weather, 'temp', { min: 0, max: 40, label: 'Temp °C' });
-  fData.addBinding(state.weather, 'humidity', { min: 0, max: 100, label: 'Humidity %' });
-  fData.addBinding(state.weather, 'windSpeed', { min: 0, max: 100, label: 'Wind km/h' });
-  // Environment
-  fData.addBinding(state.environment, 'noiseDb', { min: 30, max: 100, label: 'Noise dB' });
-  fData.addBinding(state.environment, 'airQuality', { min: 0, max: 50, label: 'PM2.5' });
-  // Transport
-  fData.addBinding(state.transport, 'congestion', { min: 0, max: 10, label: 'Traffic Idx' });
+  // 1. INIT
+  initGrid();
 
   // 2. EVENTS
   const startBtn = document.getElementById('start-btn');
   if (startBtn) startBtn.addEventListener('click', initAudioEngine);
 
-  // 3. INIT
-  initGrid();
-
-  // 4. DATA POLLING
+  // 3. DATA POLLING
   getWeatherData();
-  setInterval(getWeatherData, 10000); // 10s polling
+  // Polling rápido (5s) para captar cambios de ruido/emoción
+  setInterval(getWeatherData, 5000);
   setInterval(updateClock, 1000);
 }
 
@@ -73,33 +53,75 @@ function initGrid() {
   }
 }
 
-// --- DRAW ---
+// --- DRAW (RENDER LOOP) ---
 function draw() {
-  // 1. BACKGROUND CHANGE based on Time of Day (Period)
-  if (state.meta.period === 'Ln') background(5, 5, 10); // Noche profunda
-  else if (state.meta.period === 'Le') background(20, 10, 15); // Tarde/Noche
-  else background(guiParams.baseColor); // Día (Default)
+  // 1. INTERPRETACIÓN EMOCIONAL (Visuales)
+  let mode = state.meta.emotion || "ACTIVE_HOPE";
 
-  // 2. GRID
+  // A. FONDO Y ATMÓSFERA
+  if (mode === "URBAN_ANGER") {
+    // Ira: Rojo oscuro, parpadeo agresivo (Strobing) si hay mucho ruido
+    let flash = (state.environment.noiseDb > 75 && frameCount % 10 === 0) ? 50 : 0;
+    background(20 + flash, 0, 0);
+    guiParams.baseColor = '#ff0000';
+  }
+  else if (mode === "ECO_ANXIETY") {
+    // Ansiedad: Verde tóxico oscuro
+    background(10, 15, 5);
+    guiParams.baseColor = '#ccff00';
+  }
+  else if (mode === "SOLASTALGIA") {
+    // Duelo: Azul grisáceo, estelas (no borramos el fondo completamente)
+    background(5, 5, 10, 20); // Alpha bajo crea "trails"
+    guiParams.baseColor = '#4a6b8a';
+  }
+  else { // ACTIVE_HOPE (Default)
+    // Esperanza: Cian/Negro limpio
+    background(10, 12, 15);
+    guiParams.baseColor = '#00f0ff';
+  }
+
+  // B. GRID (Estructura de la ciudad)
   if (guiParams.showGridLines) {
-    stroke(255, 15);
+    // Color de líneas según emoción
+    let gridColor = color(guiParams.baseColor);
+    gridColor.setAlpha(30);
+    stroke(gridColor);
     strokeWeight(1);
     for (let x = 0; x <= width; x += guiParams.gridSize) line(x, 0, x, height);
     for (let y = 0; y <= height; y += guiParams.gridSize) line(0, y, width, y);
   }
 
-  // 3. AGENTS UPDATE
-  // Pasamos el estado COMPLETO
+  // C. AGENTES (Tráfico de datos)
   for (let agent of agents) {
+    // Modificadores de comportamiento según emoción
+    if (mode === "URBAN_ANGER") {
+      agent.speedMult = 3.0; // Frenesí
+      agent.jitter = 0;
+    }
+    else if (mode === "ECO_ANXIETY") {
+      agent.speedMult = 1.0;
+      // Vibración nerviosa (Jitter)
+      agent.pos.x += random(-1.5, 1.5);
+      agent.pos.y += random(-1.5, 1.5);
+    }
+    else if (mode === "SOLASTALGIA") {
+      agent.speedMult = 0.5; // Letargo
+      agent.pos.y += 0.5; // Efecto "lágrima" / gravedad leve
+    }
+    else {
+      agent.speedMult = 1.2; // Flujo normal armónico
+    }
+
     agent.update(state);
     agent.display();
   }
 
-  // 4. GLOBAL EFFECTS (Post-Process)
-  // Humidity -> Blur
-  // > 70% humidity starts blurring
-  if (state.weather.humidity > 60) {
-    let blurAmt = map(state.weather.humidity, 60, 100, 0, 4);
+  // D. POST-PROCESADO (Filtros Globales)
+  if (mode === "SOLASTALGIA" || mode === "ECO_ANXIETY") {
+    // Visión borrosa (bruma mental/ambiental)
+    // Más intenso si la humedad es alta
+    let blurAmt = map(state.weather.humidity, 50, 100, 1, 4);
     filter(BLUR, blurAmt);
   }
 }
@@ -110,8 +132,8 @@ async function getWeatherData() {
     const res = await fetch('/api/weather');
     if (res.ok) {
       const data = await res.json();
-      // MERGE data safely update UI logic
-      // Note: In a real app we might want to smoothly interpolate these values
+
+      // Sincronizar estado Frontend con Backend
       Object.assign(state.meta, data.meta);
       Object.assign(state.weather, data.weather);
       Object.assign(state.environment, data.environment);
@@ -120,22 +142,30 @@ async function getWeatherData() {
       updateDOM();
     }
   } catch (e) {
-    console.error("Fetch Data Error:", e);
+    console.error("Data Fetch Error:", e);
   }
 }
 
 function updateDOM() {
-  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+  const setTxt = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = v;
+  };
 
-  // Left Panel Monitor
-  setTxt('temp-val', state.weather.temp.toFixed(1) + "°C");
-  setTxt('wind-val', state.weather.windSpeed.toFixed(0) + " km/h");
-  setTxt('mobil-val', state.transport.congestion.toFixed(1) + " / 10");
+  // Panel Izquierdo (Mapeo exacto a tu nuevo HTML)
+  setTxt('noise-val', state.environment.noiseDb.toFixed(1) + " dB");
 
-  // Environment (New IDs might be needed in HTML or reuse slots)
-  // Reuse "rain-val" for Noise momentarily or add new items dynamically?
-  // For now let's map logic to existing slots if available, or just rely on GUI.
-  setTxt('rain-val', state.environment.noiseDb.toFixed(0) + " dB");
+  const co2 = state.environment.co2 || 400;
+  setTxt('co2-val', co2.toFixed(0) + " ppm");
+
+  const lightPct = (state.environment.lightLevel * 100).toFixed(0);
+  setTxt('light-val', lightPct + "%");
+
+  setTxt('congestion-val', state.transport.congestion.toFixed(1) + " / 10");
+
+  // Footer: Mostrar el estado emocional actual
+  const emotionLabel = state.meta.emotion ? state.meta.emotion.replace('_', ' ') : "STANDBY";
+  setTxt('desc-val', emotionLabel);
 }
 
 function updateClock() {
