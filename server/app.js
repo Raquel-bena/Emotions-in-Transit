@@ -9,6 +9,9 @@ const morgan = require('morgan'); // Logging HTTP
 // Importar DataEngine (Clase)
 const DataEngine = require('./utils/dataNormalizer');
 
+// testing purposes
+(new DataEngine()).fetchPythonData().then(data => console.log(data));
+
 // Importar Rutas
 const weatherRoutes = require('./routes/weather');
 const bicingRoutes = require('./routes/bicing');

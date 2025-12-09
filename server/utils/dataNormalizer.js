@@ -131,6 +131,12 @@ class DataEngine {
 
     // --- DATA FETCHING ---
 
+    async fetchPythonData() {
+        const url = "http://127.0.0.1:5000/";
+        const res = await axios.get(url);
+        return res.data;
+    }
+
     async fetchWeatherData() {
         const apiKey = process.env.OWM_KEY;
         const tmbAppId = process.env.TMB_APP_ID;
@@ -191,7 +197,7 @@ class DataEngine {
                 noiseDb: envMetrics.noiseDb,
                 noiseFreq: envMetrics.noiseFreq,
                 airQuality: envMetrics.airQuality,
-                lightLevel: this.getLightLevel()
+                lightLevel: await this.getLightLevel()
             },
             transport: {
                 congestion: transportMetrics.congestion,
@@ -215,11 +221,10 @@ class DataEngine {
         };
     }
 
-    getLightLevel() {
-        const h = new Date().getHours();
-        if (h >= 7 && h < 19) return 1.0; // Día
-        if (h >= 19 && h < 21) return 0.5; // Atardecer
-        return 0.1; // Noche
+    async getLightLevel() {
+        const url = "http://127.0.0.1:5000/light-level";
+        const res = await axios.get(url);
+        return res.data['light-level'];
     }
 
     scheduleNextUpdate(delay) {
