@@ -2,310 +2,366 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Melodías Emocionales con Tone.js</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMOTIONS :: SONIC GENERATOR</title>
     <script src="https://unpkg.com/tone@14.9.15/build/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f4f4f9; }
-        h1 { color: #333; }
-        button {
-            padding: 10px 20px;
-            margin: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
+        :root {
+            --bg-color: #050505;
+            --text-color: #00ff41;
+            --panel-bg: rgba(20, 20, 20, 0.8);
+            --border: 1px solid #333;
         }
-        #btn-alegria { background-color: #4CAF50; color: white; }
-        #btn-tristeza { background-color: #2196F3; color: white; }
-        #btn-miedo { background-color: #FF9800; color: white; }
-        #btn-enojo { background-color: #F44336; color: white; }
-        #btn-calma { background-color: #00BCD4; color: white; }
-        #btn-stop { background-color: #9E9E9E; color: white; }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Efecto de líneas de escaneo de fondo */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            z-index: 10;
+            width: 90%;
+            max-width: 800px;
+            text-align: center;
+            border: 1px solid #444;
+            padding: 20px;
+            background: var(--panel-bg);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        /* Visualizador */
+        canvas {
+            width: 100%;
+            height: 150px;
+            background: #000;
+            border: 1px solid #333;
+            margin: 20px 0;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* Botonera */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+        }
+
+        button {
+            padding: 15px 10px;
+            font-family: inherit;
+            font-size: 14px;
+            background: transparent;
+            color: #888;
+            border: 1px solid #444;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: #fff;
+        }
+
+        /* Colores específicos por emoción (Activos) */
+        button.active-alegria { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border-color: #4CAF50; box-shadow: 0 0 10px #4CAF50; }
+        button.active-tristeza { background: rgba(33, 150, 243, 0.2); color: #2196F3; border-color: #2196F3; box-shadow: 0 0 10px #2196F3; }
+        button.active-miedo { background: rgba(255, 152, 0, 0.2); color: #FF9800; border-color: #FF9800; box-shadow: 0 0 10px #FF9800; }
+        button.active-enojo { background: rgba(244, 67, 54, 0.2); color: #F44336; border-color: #F44336; box-shadow: 0 0 10px #F44336; }
+        button.active-calma { background: rgba(0, 188, 212, 0.2); color: #00BCD4; border-color: #00BCD4; box-shadow: 0 0 10px #00BCD4; }
+        
+        #btn-stop:hover { background: #333; color: white; }
+
+        .status {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #666;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Generador de Tracks Emocionales (Tone.js)</h1>
-    <p>Haz clic en una emoción para escuchar su melodía:</p>
+    <div class="container">
+        <h1>Sonic Affect Generator v1.0</h1>
+        
+        <canvas id="visualizer"></canvas>
 
-    <div>
-        <button id="btn-alegria" onclick="playEmotionTrack('alegria')">😃 Alegría</button>
-        <button id="btn-tristeza" onclick="playEmotionTrack('tristeza')">😔 Tristeza</button>
-        <button id="btn-miedo" onclick="playEmotionTrack('miedo')">😨 Miedo</button>
-        <button id="btn-enojo" onclick="playEmotionTrack('enojo')">😠 Enojo</button>
-        <button id="btn-calma" onclick="playEmotionTrack('calma')">😌 Calma</button>
-        <button id="btn-stop" onclick="stopAll()">◼ Detener</button>
+        <div class="controls">
+            <button id="btn-alegria" onclick="playEmotion('alegria')">😃 Alegría</button>
+            <button id="btn-tristeza" onclick="playEmotion('tristeza')">😔 Tristeza</button>
+            <button id="btn-miedo" onclick="playEmotion('miedo')">😨 Miedo</button>
+            <button id="btn-enojo" onclick="playEmotion('enojo')">😠 Enojo</button>
+            <button id="btn-calma" onclick="playEmotion('calma')">😌 Calma</button>
+            <button id="btn-stop" onclick="stopAll()">◼ STOP</button>
+        </div>
+
+        <div class="status" id="status-text">SYSTEM STANDBY... WAITING FOR INPUT</div>
     </div>
 
     <script>
-        let currentTrack = null;
-        let activeSynths = [];
+        // --- 1. CONFIGURACIÓN GLOBAL ---
+        let currentParts = []; // Array para guardar las partes activas (Loop, Sequence)
+        let activeSynths = []; // Array para guardar los sintetizadores (para limpiarlos)
+        let isPlaying = false;
+        let currentEmotion = null;
 
-        // Función para inicializar el contexto de audio
-        const startAudioContext = async () => {
+        // Configuración de Colores para el visualizador
+        const emotionColors = {
+            'alegria': '#4CAF50',
+            'tristeza': '#2196F3',
+            'miedo': '#FF9800',
+            'enojo': '#F44336',
+            'calma': '#00BCD4',
+            'default': '#333333'
+        };
+
+        // Nodos Maestros (Efectos Globales)
+        let masterReverb, masterLimiter, waveform;
+
+        // --- 2. MOTOR DE AUDIO (Tone.js) ---
+
+        const initAudio = async () => {
             if (Tone.context.state !== 'running') {
                 await Tone.start();
-                console.log("Audio Context Started.");
+                console.log("Audio Context Started");
+            }
+            
+            // Si ya existen, no los recreamos
+            if (!masterReverb) {
+                masterLimiter = new Tone.Limiter(-1).toDestination();
+                masterReverb = new Tone.Reverb({ decay: 2.5, preDelay: 0.1 }).connect(masterLimiter);
+                await masterReverb.generate(); // Necesario para Reverb
+                
+                // Analizador para el visualizador (Waveform)
+                waveform = new Tone.Waveform(1024);
+                masterLimiter.connect(waveform); // Conectamos la salida final al analizador
+                
+                visualize(); // Iniciar loop de dibujo
             }
         };
 
-        // Función para detener el track actual y limpiar los sintetizadores
         const stopAll = () => {
             Tone.Transport.stop();
-            if (currentTrack) {
-                currentTrack.dispose();
-                currentTrack = null;
-            }
+            Tone.Transport.cancel(); // Borra eventos programados
+
+            // Detener y eliminar partes musicales
+            currentParts.forEach(part => {
+                if(part) {
+                    part.stop();
+                    part.dispose();
+                }
+            });
+            currentParts = [];
+
+            // Limpiar sintetizadores antiguos para liberar memoria
             activeSynths.forEach(synth => synth.dispose());
             activeSynths = [];
-            console.log("Reproducción detenida y sintetizadores limpiados.");
+
+            // Reset UI
+            document.querySelectorAll('button').forEach(b => b.className = '');
+            document.getElementById('status-text').innerText = "SYSTEM STOPPED";
+            currentEmotion = 'default';
+            isPlaying = false;
         };
 
-        // === FUNCIONES DE MELODÍA ===
-
-        // 1. 😃 Alegría (Joy) - Rápido, brillante, staccato
-        const createAlegriaTrack = () => {
-            Tone.Transport.bpm.value = 150;
-            const synth = new Tone.Synth({
-                envelope: {
-                    attack: 0.01,
-                    decay: 0.2,
-                    sustain: 0.1,
-                    release: 0.5
-                },
-                oscillator: { type: 'triangle' }
-            }).toDestination();
+        // Función auxiliar para conectar synth a efectos maestros
+        const connectSynth = (synth) => {
+            // Conectar al Reverb (que va al Limiter -> Destination)
+            synth.connect(masterReverb);
             activeSynths.push(synth);
+            return synth;
+        };
 
-            const melody = [
-                ["C4", "E4", "G4", "C5"],
-                ["G4", "F4", "E4", "D4"],
-                ["E4", "G4", "A4", "G4"],
-                ["F4", "E4", "D4", "C4"]
-            ];
+        // --- 3. COMPOSICIONES EMOCIONALES ---
+
+        const tracks = {
+            alegria: () => {
+                Tone.Transport.bpm.value = 140;
+                const synth = connectSynth(new Tone.PolySynth(Tone.Synth, {
+                    volume: -5,
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 1 }
+                }));
+
+                const melody = [ ["C4","E4","G4"], ["E4","G4","C5"], ["G4","B4","D5"], ["C5","E5","G5"] ];
+                
+                const part = new Tone.Part((time, chord) => {
+                    synth.triggerAttackRelease(chord, "8n", time);
+                }, [
+                    ["0:0:0", melody[0]], ["0:1:0", melody[1]], 
+                    ["0:2:0", melody[2]], ["0:3:0", melody[3]]
+                ]);
+                part.loop = true; part.loopEnd = "1m"; part.start(0);
+                return [part];
+            },
+
+            tristeza: () => {
+                Tone.Transport.bpm.value = 60;
+                const cello = connectSynth(new Tone.FMSynth({
+                    volume: -2, harmonicity: 3.01, modulationIndex: 14,
+                    envelope: { attack: 1.5, decay: 1, sustain: 0.4, release: 2 }
+                }));
+
+                const part = new Tone.Part((time, note) => {
+                    cello.triggerAttackRelease(note.n, note.d, time);
+                }, [
+                    { time: "0:0:0", n: "C3", d: "1n" }, { time: "1:0:0", n: "Ab2", d: "2n" },
+                    { time: "1:2:0", n: "G2", d: "2n" }, { time: "2:0:0", n: "Eb2", d: "1n" }
+                ]);
+                part.loop = true; part.loopEnd = "4m"; part.start(0);
+                return [part];
+            },
+
+            miedo: () => {
+                Tone.Transport.bpm.value = 100;
+                const noise = connectSynth(new Tone.NoiseSynth({ volume: -10, envelope: {attack: 0.1, decay: 0.5} }));
+                const drone = connectSynth(new Tone.FMSynth({ volume: -5, harmonicity: 0.5, modulationIndex: 20 }));
+
+                // Drone de fondo disonante
+                const loopDrone = new Tone.Loop(time => {
+                    drone.triggerAttackRelease("C2", "2n", time);
+                    if(Math.random() > 0.5) drone.triggerAttackRelease("F#2", "4n", time + 1); // Tritono
+                }, "2m").start(0);
+
+                // Ruido aleatorio
+                const loopNoise = new Tone.Loop(time => {
+                    if(Math.random() > 0.7) noise.triggerAttackRelease("8n", time);
+                }, "4n").start(0);
+
+                return [loopDrone, loopNoise];
+            },
+
+            enojo: () => {
+                Tone.Transport.bpm.value = 160;
+                const dist = new Tone.Distortion(0.8).toDestination(); // Distorsión directa
+                const synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "sawtooth" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+                }).connect(dist);
+                activeSynths.push(synth); // Manual push porque no usa connectSynth
+
+                const riff = new Tone.Sequence((time, note) => {
+                    synth.triggerAttackRelease(note, "16n", time);
+                }, ["C2", "C2", "Eb2", null, "F2", "F#2", "C2", "Bb1"], "8n").start(0);
+                return [riff];
+            },
+
+            calma: () => {
+                Tone.Transport.bpm.value = 60;
+                const pad = connectSynth(new Tone.PolySynth(Tone.AMSynth, {
+                    volume: -8, oscillator: { type: "sine" },
+                    envelope: { attack: 2, decay: 1, sustain: 0.8, release: 3 }
+                }));
+                
+                const chords = [ ["Db3","F3","Ab3"], ["C3","Eb3","Ab3"], ["Bb2","Db3","F3"] ];
+                let chordIdx = 0;
+
+                const loop = new Tone.Loop(time => {
+                    pad.triggerAttackRelease(chords[chordIdx], "1n", time);
+                    chordIdx = (chordIdx + 1) % chords.length;
+                }, "2m").start(0);
+                return [loop];
+            }
+        };
+
+        // --- 4. CONTROLADOR DE INTERFAZ ---
+
+        const playEmotion = async (emotion) => {
+            await initAudio(); // Asegura que el audio esté listo
             
-            const part = new Tone.Part((time, chord) => {
-                // Toca cada nota del acorde en rápida sucesión (staccato juguetón)
-                chord.forEach((note, index) => {
-                    synth.triggerAttackRelease(note, '16n', time + index * 0.05);
-                });
-            }, [
-                ["0:0:0", melody[0]],
-                ["0:1:0", melody[1]],
-                ["0:2:0", melody[2]],
-                ["0:3:0", melody[3]],
-            ]);
+            if (currentEmotion === emotion && isPlaying) return; // Ya está sonando
 
-            part.loop = true;
-            part.loopEnd = '4m';
-            part.start(0);
-            return part;
+            stopAll(); // Detiene lo anterior
+            
+            currentEmotion = emotion;
+            isPlaying = true;
+
+            // UI Feedback
+            const btn = document.getElementById(`btn-${emotion}`);
+            btn.classList.add(`active-${emotion}`);
+            document.getElementById('status-text').innerText = `GENERATING AFFECT: ${emotion.toUpperCase()}...`;
+
+            // Iniciar Audio
+            console.log(`Playing: ${emotion}`);
+            if (tracks[emotion]) {
+                currentParts = tracks[emotion](); // Genera las partes y las guarda
+                Tone.Transport.start();
+            }
         };
 
-        // 2. 😔 Tristeza (Sadness) - Lento, oscuro, legato
-        const createTristezaTrack = () => {
-            Tone.Transport.bpm.value = 50;
-            const celloSynth = new Tone.FMSynth({
-                harmonicity: 3.01,
-                modulationIndex: 14,
-                envelope: { attack: 0.8, decay: 1, sustain: 0.4, release: 4 }, // Ataque lento, Release largo
-                modulation: { type: 'sine' },
-                modulationEnvelope: { attack: 1.0, decay: 0.5, sustain: 0.2, release: 2 }
-            }).toDestination();
-            activeSynths.push(celloSynth);
+        // --- 5. VISUALIZADOR (CANVAS) ---
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
 
-            // Melodía descendente en Do Menor (Cm) con notas largas
-            const part = new Tone.Part((time, note) => {
-                celloSynth.triggerAttackRelease(note.note, note.duration, time);
-            }, [
-                { time: "0:0:0", note: "C3", duration: "1n" }, // 1 compás
-                { time: "1:0:0", note: "Bb2", duration: "2n" },
-                { time: "1:2:0", note: "Ab2", duration: "2n" },
-                { time: "2:0:0", note: "G2", duration: "1m" }, // 1 compás de G2 (legato)
-                { time: "3:0:0", note: "Eb2", duration: "1n" }
-            ]);
+        function visualize() {
+            requestAnimationFrame(visualize);
+            
+            // Ajustar tamaño si cambia ventana
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
 
-            part.loop = true;
-            part.loopEnd = '4m';
-            part.start(0);
-            return part;
-        };
+            // Fondo con rastro (fade effect)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 3. 😨 Miedo (Fear) - Irregular, disonante, ruido
-        const createMiedoTrack = () => {
-            Tone.Transport.bpm.value = 90;
-            const lowBass = new Tone.MonoSynth({
-                oscillator: { type: 'sawtooth' },
-                envelope: { attack: 0.05, decay: 0.1, sustain: 0.05, release: 0.1 },
-                filterEnvelope: { attack: 0.1, decay: 0.01, sustain: 0.5, release: 0.5, baseFrequency: 60, octaves: 1 }
-            }).toDestination();
-            activeSynths.push(lowBass);
+            if (!waveform || !isPlaying) return;
 
-            const noise = new Tone.NoiseSynth({
-                noise: { type: "white" },
-                envelope: { attack: 0.005, decay: 0.1, sustain: 0 } // Para el golpe de ruido
-            }).toDestination();
-            activeSynths.push(noise);
+            const buffer = waveform.getValue();
+            const color = emotionColors[currentEmotion] || emotionColors['default'];
 
-            const tensionStrings = new Tone.PolySynth(3, Tone.Synth, {
-                oscillator: { type: 'sine' },
-                envelope: { attack: 0.1, decay: 0.8, sustain: 0.9, release: 0.5 }
-            }).toDestination();
-            activeSynths.push(tensionStrings);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.beginPath();
 
-            // Secuencia con eventos erráticos:
-            const part = new Tone.Part((time, event) => {
-                if (event.type === 'bass') {
-                    lowBass.triggerAttackRelease(event.note, '8n', time, 0.8);
-                } else if (event.type === 'cluster') {
-                    tensionStrings.triggerAttackRelease(["E4", "F4", "F#4"], "1m", time, 0.4); // Cluster disonante
-                } else if (event.type === 'glissando') {
-                    // Simulación de glissando ascendente terminando en un chillido agudo
-                    noise.triggerAttackRelease(1, time, 1); // Ruido súbito
-                    tensionStrings.triggerAttackRelease("A6", "16n", time + 0.1, 1);
-                }
-            }, [
-                { time: "0:0:0", type: "bass", note: "C1" }, // C1: Pulso irregular 1
-                { time: "0:1:2", type: "bass", note: "C1" }, // C1: Pulso irregular 2
-                { time: "1:0:0", type: "cluster" },          // C2: Cluster disonante sostenido
-                { time: "2:0:0", type: "silence" },          // C3: SILENCIO TENSO
-                { time: "3:2:0", type: "glissando" }         // C4: Estallido Glissando
-            ]);
+            const sliceWidth = canvas.width * 1.0 / buffer.length;
+            let x = 0;
 
-            part.loop = true;
-            part.loopEnd = '4m';
-            part.start(0);
-            return part;
-        };
+            for (let i = 0; i < buffer.length; i++) {
+                const v = buffer[i] * 5; // Amplificar un poco para ver mejor
+                const y = (canvas.height / 2) + (v * (canvas.height / 2));
 
-        // 4. 😠 Enojo (Anger) - Fuerte, distorsionado, percusivo
-        const createEnojoTrack = () => {
-            Tone.Transport.bpm.value = 160;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
 
-            // Efecto de Distorsión
-            const distortion = new Tone.Distortion(0.8).toDestination();
-
-            // Guitarra (PolySynth con distorsión)
-            const guitar = new Tone.PolySynth(2, Tone.MonoSynth, {
-                oscillator: { type: 'square' },
-                envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
-            }).connect(distortion);
-            activeSynths.push(guitar);
-
-            // Batería (MembraneSynth para bombo y caja)
-            const kick = new Tone.MembraneSynth({ pitchDecay: 0.05, octave: 2, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 } }).toDestination();
-            const snare = new Tone.NoiseSynth({ envelope: { attack: 0.005, decay: 0.1, sustain: 0.0, release: 0.01 } }).toDestination();
-            activeSynths.push(kick, snare);
-
-            // Melodía Rítmica (Power Riff)
-            const riff = new Tone.Sequence((time, note) => {
-                guitar.triggerAttackRelease(note, '8n', time, 1);
-                kick.triggerAttackRelease("C1", '16n', time);
-                // Patrón de Caja agresivo
-                if (time.endsWith(':2:0') || time.endsWith(':3:0')) {
-                    snare.triggerAttackRelease(0.5, time);
-                }
-            }, [
-                ["E3", "B3"], ["E3", "B3"], ["F3", "C4"], ["F3", "C4"], // C1
-                ["E3", "B3"], ["E3", "B3"], ["F3", "C4"], ["F3", "C4"], // C2
-                ["E3", "B3"], ["rest"], ["F3", "C4"], ["rest"],        // C3 (Sincopado)
-                ["E3", "B3"], ["E3", "B3"], ["F3", "C4"], ["F3", "C4"], // C4
-            ], "8n").start(0);
-
-            riff.loop = true;
-            riff.loopEnd = '2m'; // Bucle de dos compases para el riff base
-            return riff;
-        };
-
-        // 5. 😌 Calma (Calmness) - Lento, armónico, suave
-        const createCalmaTrack = () => {
-            Tone.Transport.bpm.value = 65;
-
-            // 1. Pad Suave (AMSynth) para las armonías
-            const pad = new Tone.AMSynth({
-                harmonicity: 1.5,
-                volume: -10,
-                envelope: { attack: 2.0, decay: 0.5, sustain: 0.5, release: 4.0 }, // Ataque y Release lentos
-            }).toDestination();
-            activeSynths.push(pad);
-
-            // 2. Flauta (Synth) para la melodía
-            const flute = new Tone.Synth({
-                oscillator: { type: 'sine' },
-                envelope: { attack: 1.0, decay: 0.1, sustain: 0.8, release: 1.5 },
-                volume: -5
-            }).toDestination();
-            activeSynths.push(flute);
-
-            // Armonía (Db Mayor)
-            const harmony = new Tone.Part((time, chord) => {
-                pad.triggerAttackRelease(chord, '4n', time);
-            }, [
-                ["0:0:0", ["Db3", "F3", "Ab3"]], // Dbmaj7
-                ["1:0:0", ["C3", "Eb3", "Ab3"]], // Ab/C
-                ["2:0:0", ["Bb2", "Db3", "F3"]], // Bbm7
-                ["3:0:0", ["Gb2", "Bb2", "Db3"]] // Gbmaj7
-            ]).start(0);
-
-            // Melodía (Flauta Circular)
-            const melody = new Tone.Part((time, note) => {
-                flute.triggerAttackRelease(note, '1n', time); // Notas largas
-            }, [
-                { time: "0:0:0", note: "F4" },
-                { time: "1:0:0", note: "Gb4" },
-                { time: "2:0:0", note: "Ab4" },
-                { time: "3:0:0", note: "Db5" }
-            ]).start(0);
-
-            harmony.loop = true;
-            harmony.loopEnd = '4m';
-            melody.loop = true;
-            melody.loopEnd = '4m';
-
-            return [harmony, melody];
-        };
-
-        // === FUNCIÓN PRINCIPAL ===
-
-        const playEmotionTrack = async (emotion) => {
-            await startAudioContext();
-            stopAll();
-
-            let trackCreator;
-            let trackName;
-
-            switch (emotion) {
-                case 'alegria':
-                    trackCreator = createAlegriaTrack;
-                    trackName = 'Alegría';
-                    break;
-                case 'tristeza':
-                    trackCreator = createTristezaTrack;
-                    trackName = 'Tristeza';
-                    break;
-                case 'miedo':
-                    trackCreator = createMiedoTrack;
-                    trackName = 'Miedo';
-                    break;
-                case 'enojo':
-                    trackCreator = createEnojoTrack;
-                    trackName = 'Enojo';
-                    break;
-                case 'calma':
-                    trackCreator = createCalmaTrack;
-                    trackName = 'Calma';
-                    break;
-                default:
-                    console.error("Emoción no reconocida.");
-                    return;
+                x += sliceWidth;
             }
 
-            console.log(`Iniciando track: ${trackName}`);
-            currentTrack = trackCreator(); // Puede ser un objeto o un array de objetos (Calma)
-            Tone.Transport.start();
-        };
-    </script>
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        }
 
+    </script>
 </body>
 </html>
