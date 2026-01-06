@@ -3,65 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMOTIONS (IN) TRANSIT - Data Webcam</title>
+    <title>EMOTIONS (IN) TRANSIT | Biometric City Node</title>
+    
     <link rel="stylesheet" href="css/style.css">
     
-    <!-- Carga las bibliotecas locales CORRECTAS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
     <script src="libs/p5.min.js"></script>
     <script src="libs/ml5.min.js"></script>
 </head>
 <body>
-    <div id="app-container">
-        <div id="data-overlay">
-            <div class="header">
-                <span class="location">Barcelona</span>
-                <span class="datetime" id="current-datetime"></span>
-            </div>
-            <div class="data-display" id="data-display"></div>
-            <div class="footer">
-                <h1>EMOTIONS (IN) TRANSIT</h1>
-            </div>
-        </div>
+
+    <div class="screen-effects">
+        <div class="scanlines"></div>
+        <div class="noise"></div>
+        <div class="vignette"></div>
+    </div>
+
+    <div id="app-ui">
         
-        <div id="loading-screen">
-            <div class="loading-content">
-                <h2>EMOTIONS (IN) TRANSIT</h2>
-                <div class="spinner"></div>
-                <p id="loading-status">Inicializando sistema...</p>
+        <header class="hud-header">
+            <div class="location-box">
+                <span class="label">UBICACIÓN_</span>
+                <span class="value">BCN_SENSORS_01</span>
             </div>
+            <div class="status-box">
+                <span class="blink">● LIVE FEED</span>
+                <span id="fps-counter">60 FPS</span>
+            </div>
+            <div class="time-box">
+                <span id="current-date">YYYY-MM-DD</span>
+                <span id="current-time" class="highlight">00:00:00</span>
+            </div>
+        </header>
+
+        <main id="canvas-container">
+            </main>
+
+        <aside id="data-overlay">
+            <h3>ANÁLISIS BIOMÉTRICO URBANO</h3>
+            
+            <div class="data-grid">
+                <div class="data-item">
+                    <span class="label">TEMP (OWM)</span>
+                    <span class="value" id="val-temp">--°C</span>
+                    <div class="bar-container"><div class="bar" id="bar-temp" style="width: 0%"></div></div>
+                </div>
+
+                <div class="data-item">
+                    <span class="label">TRÁFICO (TMB)</span>
+                    <span class="value" id="val-traffic">--</span>
+                    <div class="bar-container"><div class="bar" id="bar-traffic" style="width: 0%"></div></div>
+                </div>
+
+                <div class="data-item">
+                    <span class="label">RUIDO (dB)</span>
+                    <span class="value" id="val-noise">-- dB</span>
+                    <div class="waveform-mini" id="visual-noise"></div>
+                </div>
+            </div>
+        </aside>
+
+        <footer class="hud-footer">
+            <div class="console-log" id="system-log">
+                > Inicializando sistema...<br>
+                > Esperando conexión a APIs...
+            </div>
+            <div class="title-block">
+                <h1>EMOTIONS (IN) TRANSIT</h1>
+                <small>PROJECT_ARCHIVE_VER_000</small>
+            </div>
+        </footer>
+
+    </div>
+
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="glitch-text" data-text="LOADING SYSTEM">LOADING SYSTEM</div>
+            <div class="progress-bar"><div class="fill"></div></div>
+            <p id="loading-status">Conectando nodos neuronales...</p>
         </div>
     </div>
 
-    <!-- Variables globales -->
-    <script>
-        window.OWM_KEY = '09a95abe51374eae766a284a97a3f039';
-        window.OWM_CITY_ID = 3128740;
-        window.TMB_APP_ID = 'daf62db0';
-        window.TMB_APP_KEY = '5e4adb21bdfeda65a91e36cc2c12b7df';
-        window.SC_DEVICE_ID = 16559;
-    </script>
-    
-    <!-- Scripts en orden correcto -->
     <script src="config/secrets.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/app.js"></script>
     
+    <script src="js/api.js"></script>
+    
+    <script src="js/app.js"></script>
+
     <script>
-        function updateDateTime() {
+        // Actualizar reloj estilo militar
+        function updateClock() {
             const now = new Date();
-            document.getElementById('current-datetime').textContent = 
-                `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('es-ES', { hour12: false });
+            document.getElementById('current-date').textContent = now.toISOString().split('T')[0];
         }
-        
-        setInterval(updateDateTime, 1000);
-        updateDateTime();
-        
-        function updateLoadingStatus(message) {
-            const statusElement = document.getElementById('loading-status');
-            if (statusElement) {
-                statusElement.textContent = message;
-            }
-        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Función auxiliar para escribir en la consola visual del footer
+        window.logToScreen = function(msg) {
+            const log = document.getElementById('system-log');
+            log.innerHTML += `> ${msg}<br>`;
+            log.scrollTop = log.scrollHeight; // Auto-scroll
+        };
     </script>
 </body>
 </html>

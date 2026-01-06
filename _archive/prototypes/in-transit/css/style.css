@@ -1,0 +1,266 @@
+/* =========================================
+   VARIABLES & RESET
+   ========================================= */
+:root {
+    --color-bg: #050505;
+    --color-primary: #00ff41; /* Verde Matrix/Terminal */
+    --color-alert: #ff3333;   /* Rojo Error/Alerta */
+    --color-accent: #00f3ff;  /* Cyan Cyberpunk */
+    --font-tech: 'Share Tech Mono', 'Courier New', monospace;
+    --scanline-color: rgba(0, 0, 0, 0.5);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+    font-family: var(--font-tech);
+    overflow: hidden; /* Evita barras de scroll */
+    height: 100vh;
+    width: 100vw;
+}
+
+/* =========================================
+   SCREEN EFFECTS (La magia visual)
+   ========================================= */
+.screen-effects {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Permite hacer clic a través de los efectos */
+    z-index: 100;
+}
+
+/* Líneas de TV antigua */
+.scanlines {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.3) 50%,
+        rgba(0,0,0,0.3)
+    );
+    background-size: 100% 4px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Oscurecimiento en los bordes */
+.vignette {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+        circle,
+        rgba(0,0,0,0) 60%,
+        rgba(0,0,0,0.8) 100%
+    );
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* =========================================
+   LAYOUT PRINCIPAL
+   ========================================= */
+#app-ui {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+}
+
+#canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    /* El canvas de p5.js se inyectará aquí */
+}
+
+/* Asegura que el canvas ocupe todo */
+canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+}
+
+/* =========================================
+   HUD (Heads-Up Display)
+   ========================================= */
+.hud-header, .hud-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    padding: 10px;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-left: 4px solid var(--color-primary);
+}
+
+.location-box, .time-box, .status-box {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+}
+
+.blink {
+    animation: blinker 2s linear infinite;
+    color: var(--color-alert);
+}
+
+/* Consola de sistema en el footer */
+.console-log {
+    font-size: 0.8rem;
+    color: rgba(0, 255, 65, 0.7);
+    line-height: 1.4;
+    max-height: 50px;
+    overflow: hidden;
+    text-align: left;
+    width: 60%;
+}
+
+.title-block h1 {
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    text-shadow: 0 0 5px var(--color-primary);
+}
+
+/* =========================================
+   SIDEBAR / DATOS
+   ========================================= */
+#data-overlay {
+    position: absolute;
+    top: 100px;
+    right: 20px;
+    width: 250px;
+    background: rgba(5, 5, 5, 0.85);
+    border: 1px solid var(--color-primary);
+    padding: 15px;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
+}
+
+#data-overlay h3 {
+    border-bottom: 1px solid var(--color-primary);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    text-align: right;
+}
+
+.data-item {
+    margin-bottom: 20px;
+}
+
+.data-item .label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-accent);
+}
+
+.data-item .value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: right;
+}
+
+/* Barras de progreso decorativas */
+.bar-container {
+    width: 100%;
+    height: 4px;
+    background: #333;
+    margin-top: 5px;
+}
+
+.bar {
+    height: 100%;
+    background-color: var(--color-primary);
+    box-shadow: 0 0 5px var(--color-primary);
+    transition: width 1s ease-in-out;
+}
+
+/* Pequeña visualización de onda */
+.waveform-mini {
+    height: 30px;
+    width: 100%;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--color-primary),
+        var(--color-primary) 2px,
+        transparent 2px,
+        transparent 4px
+    );
+    opacity: 0.5;
+    margin-top: 5px;
+}
+
+/* =========================================
+   LOADING SCREEN
+   ========================================= */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-bg);
+    z-index: 200;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.glitch-text {
+    font-size: 3rem;
+    font-weight: bold;
+    position: relative;
+    color: var(--color-primary);
+}
+
+/* Barra de carga */
+.progress-bar {
+    width: 300px;
+    height: 20px;
+    border: 2px solid var(--color-primary);
+    margin: 20px 0;
+    padding: 2px;
+}
+
+.progress-bar .fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    width: 0%;
+    animation: loadProgress 3s ease-in-out forwards;
+}
+
+/* =========================================
+   ANIMACIONES
+   ========================================= */
+@keyframes blinker {
+    50% { opacity: 0; }
+}
+
+@keyframes loadProgress {
+    0% { width: 0%; }
+    40% { width: 30%; }
+    70% { width: 80%; }
+    100% { width: 100%; }
+}
