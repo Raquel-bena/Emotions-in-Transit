@@ -1,34 +1,60 @@
-# Emotions in Transit: Biometric City
+# Emotions in Transit
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![Research through Design](https://img.shields.io/badge/Methodology-Research%20through%20Design-blue)](https://doi.org/10.1145/1240624.1240697)
 
-A real-time urban visualization installation that maps the "emotional" and "physical" state of Barcelona into a digital generative canvas. The system consumes data from weather, transport, and environmental sensors to generate a living digital organism.
+> *"This artwork does not see you. It listens to the city."*
 
-## 🔗 Data Sources (Official APIs)
+Generative art installation that translates Barcelona's environmental data into an immersive audiovisual experience, fostering reflection on urban loneliness through an ethical technological architecture.
 
-- **Meteorology**: [OpenWeatherMap](https://openweathermap.org/api)
-- **Transport (Metro/Bus)**: [TMB Open Data](https://developer.tmb.cat/)
-- **Environment (Noise/Air Quality)**: [Barcelona Environmental Maps](https://ajuntament.barcelona.cat/mapes-dades-ambientals/qualitataire/en/)
-- **Noise Ordinance**: [Barcelona Noise Map](https://ajuntament.barcelona.cat/mapes-dades-ambientals/soroll/en/)
+![Installation Overview](docs/images/installation_setup.jpg)
 
-## 🎨 Visual Mapping System
+## Conceptual Foundation
+Emotions in Transit emerges as a critical response to the paradox of hyperconnection in smart cities. Instead of extractive surveillance technologies, this project proposes:
+- **Poetic Correlation**: Using public environmental data as emotional metaphors
+- **Gift Biometrics**: Voluntary pulse interaction (not facial recognition)
+- **Data Visceralization**: Feeling data through fluid particle systems, not reading charts
 
-| Data | Visual Parameter | Aesthetic Meaning |
-|------|------------------|-------------------|
-| **Temperature** | Color (Blue -> Red) | Thermal Energy |
-| **Humidity** | Blur / Fog | Atmospheric Density |
-| **Noise (dB)** | Jitter / Vibration | Urban Stress / Activity |
-| **Traffic** | Chaos / Rotation | Flow & Entropy |
-| **Time (Ld/Le/Ln)**| Lighting / Contrast | Circadian Rhythm |
+## System Architecture
+![System Architecture](docs/images/system_architecture.png)
 
-## 🛠️ Tech Stack
+A hybrid architecture that orchestrates:
+- **Backend** (Node.js): Real-time data ingestion and normalization
+- **Data Science** (Python): K-Means clustering for emotional state detection
+- **Frontend** (p5.js + Tone.js): WebGL-accelerated visualization and sonification
+- **Hardware** (ESP32 + Raspberry Pi): Physical interaction totem
 
-- **Frontend**: API p5.js (Visuals), Tone.js (Audio), Tweakpane (GUI), Vite.
-- **Backend**: Node.js, Express (Data Normalization & Caching).
+## Live Demo
+[![p5.js Editor Collection](https://img.shields.io/badge/p5.js-Editor%20Collection-brightgreen)](https://editor.p5js.org/Rb.Graphicx/collections/RoZ2mwKzv)
 
-## 🚀 How to Run
+- [Particle Systems Prototype](https://editor.p5js.org/Rb.Graphicx/sketches/Dl3zN8wRc)
+- [Flow Field Experiments](https://editor.p5js.org/Rb.Graphicx/sketches/9mYw3XWJj)
+- [Audiovisual Demo](https://editor.p5js.org/Rb.Graphicx/sketches/kH1zXQqVp)
 
-1.  Clone repository.
-2.  Install dependencies: `npm install`
-3.  Configure `.env` with your API Keys (OWM_KEY, TMB_APP_ID, etc.). *Defaults to Simulation Mode if keys are missing.*
-4.  Start Development Server: `npm run dev`
-5.  Start Backend Server: `npm start`
+## ⚙️ Installation & Setup
 
+### Prerequisites
+- Node.js v18+
+- Python 3.9+
+- p5.js libraries
+- Arduino IDE (for hardware)
+
+### Quick Start
+```bash
+# Clone repository
+git clone https://github.com/Raquel-bena/Emotions-in-Transit.git
+cd Emotions-in-Transit
+
+# Install backend dependencies
+npm install
+
+# Install data science dependencies
+pip install -r requirements.txt
+
+# Configure environment variables
+cp backend/.env.example backend/.env
+# Add your API keys to .env file
+
+# Start development servers
+npm run dev:backend    # Node.js server
+npm run dev:frontend   # p5.js visualization
+python data-science/04_KMeans_Clustering.py  # Train model
