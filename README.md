@@ -30,7 +30,7 @@ A hybrid architecture that orchestrates:
 - [Flow Field Experiments](https://editor.p5js.org/Rb.Graphicx/sketches/9mYw3XWJj)
 - [Audiovisual Demo](https://editor.p5js.org/Rb.Graphicx/sketches/kH1zXQqVp)
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 - Node.js v18+
