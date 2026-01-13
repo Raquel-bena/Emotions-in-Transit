@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { emotionMap } from './utils/emotionConfig.js';
+import { emotionMap } from '../utils/emotionConfig.js';
 
 const Visualization = () => {
   const mountRef = useRef(null);
