@@ -1,63 +1,29 @@
-// Apuntar al .env que está en la raíz (un nivel arriba)
-require('dotenv').config({ path: '../.env' });
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { bicingRouter } from '../routes/bicing.js';
+import { tmbRouter } from '../routes/tmb.js';
+import { weatherRouter } from '../routes/weather.js';
 
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const morgan = require('morgan'); // Logging HTTP
-
-// Importar DataEngine (Clase)
-const DataEngine = require('./utils/dataNormalizer');
-
-// Importar Rutas
-const weatherRoutes = require('./routes/weather');
-const bicingRoutes = require('./routes/bicing');
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
-// --- MIDDLEWARES ---
-app.use(morgan('dev')); // Logger
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type']
-}));
-app.use(express.json()); // Parsear JSON bodies
+// Middleware
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../../dist')));
 
-// --- SERVIR ARCHIVOS ESTÁTICOS (PRODUCCIÓN) ---
-// 1. Servir carpeta pública (assets generales)
-app.use(express.static(path.join(__dirname, '../public')));
-// 2. Servir el Frontend construido (Vite build -> dist)
-app.use(express.static(path.join(__dirname, '../dist')));
+// Rutas API
+app.use('/api/bicing', bicingRouter);
+app.use('/api/tmb', tmbRouter);
+app.use('/api/weather', weatherRouter);
 
-// --- INICIALIZACIÓN DEL MOTOR DE DATOS ---
-const dataEngine = new DataEngine();
-// Iniciar polling automáticamente (Conecta al Kit Palo Alto #14129)
-dataEngine.startPolling();
-
-// --- RUTAS API ---
-// Pasamos la instancia 'dataEngine' a weatherRoutes para que comparta el estado
-app.use('/api/weather', weatherRoutes(dataEngine));
-app.use('/api/bicing', bicingRoutes);
-app.use('/api/tmb', require('./routes/tmb'));
-
-// --- RUTA CATCH-ALL PARA SPA (Vite) ---
-// Cualquier petición que no sea API, devuelve index.html para que el Frontend maneje la navegación
+// Ruta para SPA (Single Page Application)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.sendFile(path.join(__dirname, '../../dist', 'index.html'));
 });
 
-// --- MANEJO DE ERRORES GLOBAL ---
-app.use((err, req, res, next) => {
-    console.error("❌ Error del Servidor:", err.stack);
-    res.status(500).json({
-        error: "Error interno del servidor",
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
-
-app.listen(port, () => {
-    console.log(`📡 Servidor Backend escuchando en http://localhost:${port}`);
-    console.log(`🔧 Modo: ${process.env.NODE_ENV || 'development'}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor corriendo en http://0.0.0.0:${port}`);
 });

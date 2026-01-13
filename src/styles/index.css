@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Monaco&display=swap');
+
+:root {
+  --transition-speed: 0.3s;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Monaco', monospace;
+  background: black;
+  color: white;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: #60A5FA;
+  text-decoration: none;
+  transition: opacity var(--transition-speed);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+.border-b, .border-t {
+  border-color: #1f2937 !important;
+}

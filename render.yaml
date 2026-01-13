@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: emotions-in-transit
+    env: node
+    buildCommand: "npm install"
+    startCommand: "node server/utils/app.js"
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+    region: frankfurt
+    healthCheckPath: /
+    numInstances: 1
+    

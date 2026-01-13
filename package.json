@@ -1,24 +1,25 @@
 {
   "name": "emotions-in-transit",
   "version": "1.0.0",
-  "description": "Bioma emocional urbano",
-  "main": "app.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "start": "node server/app.js",
-    "server": "node --watch server/app.js",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --port 10000",
+    "start": "node server/app.js"
   },
   "dependencies": {
-    "axios": "^1.13.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
     "express": "^4.18.2",
-    "morgan": "^1.10.1",
-    "p5": "^2.1.1",
-    "tone": "^15.1.22",
-    "tweakpane": "^4.0.5",
-    "vite": "^7.2.6"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^5.0.0"
   }
 }

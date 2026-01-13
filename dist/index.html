@@ -1,89 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emotions in Transit - Data Automata</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
-    rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-DKHlJM0U.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DoYGb2dV.css">
+  <meta name="description" content="Emotions in Transit - Interactive installation exploring emotions through Barcelona metro map">
+  <title>Emotions in Transit</title>
+  <script type="module" crossorigin src="/assets/index-DBIgxjij.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Cr-_FZec.css">
 </head>
-
 <body>
-  <div id="app"></div>
-
-  <div id="ui-layer">
-
-    <div id="welcome-screen">
-      <h1 class="glitch-text">EMOTIONS IN TRANSIT</h1>
-      <p>A BCN Data Experience</p>
-      <button id="start-btn">INITIALIZE SYSTEM</button>
-    </div>
-
-    <div id="info-panel" class="hud-panel left-panel">
-      <div class="panel-header">
-        <div id="clock-display">--:--</div>
-        <div id="date-display">LOADING...</div>
-        <div class="live-indicator"><span class="status-dot"></span> BCN LIVE</div>
-      </div>
-
-      <div class="data-grid">
-        <div class="data-item">
-          <span class="label">NOISE</span>
-          <span class="value" id="noise-val">-- dB</span>
-        </div>
-        <div class="data-item">
-          <span class="label">CO2</span>
-          <span class="value" id="co2-val">-- ppm</span>
-        </div>
-
-        <div class="data-item">
-          <span class="label">LIGHT</span>
-          <span class="value" id="light-val">-- %</span>
-        </div>
-        <div class="data-item highlight">
-          <span class="label">PULSE</span>
-          <span class="value" id="congestion-val">-- /10</span>
-        </div>
-      </div>
-
-      <div class="status-footer">
-        <span class="label">SYSTEM:</span> <span id="desc-val">STANDBY</span>
-      </div>
-    </div>
-
-    <div id="legend-panel" class="hud-panel right-panel">
-      <div class="panel-header">
-        <span>[KEY]</span> <span>VISUAL_DECODER</span>
-      </div>
-      <ul class="legend-list">
-        <li>
-          <span class="symbol" style="color: var(--accent-tertiary)">░▒▓</span>
-          <div class="legend-desc">
-            <strong>ENTROPY</strong>
-            <small>Temperature / Chaos Level</small>
-          </div>
-        </li>
-        <li>
-          <span class="symbol" style="color: #fff">→</span>
-          <div class="legend-desc">
-            <strong>VECTOR</strong>
-            <small>Wind Direction / Alignment</small>
-          </div>
-        </li>
-        <li>
-          <span class="symbol" style="color: var(--accent-primary)">[+]</span>
-          <div class="legend-desc">
-            <strong>METABOLISM</strong>
-            <small>Mobility / Update Rate</small>
-          </div>
-        </li>
-      </ul>
-    </div>
-
-  </div>
+  <div id="root"></div>
 </body>
-
 </html>
