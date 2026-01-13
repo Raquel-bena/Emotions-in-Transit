@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Emotions in Transit - Interactive installation exploring emotions through Barcelona metro map">
   <title>Emotions in Transit</title>
+  <style>
+    /* Estilo básico para quitar márgenes y que el canvas ocupe todo */
+    body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
+  <script type="module" src="/src/core/sketch.js"></script>
 </body>
 </html>
