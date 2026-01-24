@@ -1,57 +1,45 @@
+// UBICACIÓN: server/routes/tmb.js
 const express = require('express');
-const axios = require('axios');
 const router = express.Router();
+const axios = require('axios');
 
-// Cache simple para no saturar la API (TTL 60 segundos)
-let cache = {
-    data: null,
-    lastUpdate: 0
-};
+router.get('/transport', async (req, res) => {
+    const APP_ID = process.env.TMB_APP_ID;
+    const APP_KEY = process.env.TMB_APP_KEY;
 
-router.get('/metro', async (req, res) => {
-    const NOW = Date.now();
-
-    // 1. Servir caché si es válido (< 60s)
-    if (cache.data && (NOW - cache.lastUpdate < 60000)) {
-        return res.json(cache.data);
-    }
-
-    const appId = process.env.TMB_APP_ID;
-    const appKey = process.env.TMB_APP_KEY;
-
-    if (!appId || !appKey) {
-        return res.status(500).json({ error: "Faltan credenciales TMB en .env" });
+    // Validación: Si faltan claves, usa modo simulación (Ghost Mode)
+    if (!APP_ID || !APP_KEY) {
+        console.log("⚠️ Faltan claves TMB. Activando modo simulación.");
+        return res.json({ 
+            status: "Offline (Ghost Mode)", 
+            congestion: 5, 
+            activeLines: 8,
+            source: "Simulation"
+        });
     }
 
     try {
-        // Consultamos estado de líneas de Metro
-        const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${appId}&app_key=${appKey}`;
-        const response = await axios.get(url, { timeout: 5000 });
+        const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${APP_ID}&app_key=${APP_KEY}`;
+        const response = await axios.get(url);
+        
+        // Calcular congestión simulada basada en la hora
+        const now = new Date();
+        const hour = (now.getUTCHours() + 1) % 24; 
+        let congestion = ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) 
+            ? Math.floor(Math.random() * 3) + 7  // Hora punta
+            : Math.floor(Math.random() * 5) + 1; // Hora valle
 
-        const lines = response.data.features;
-        const activeLines = lines.length;
-
-        const payload = {
-            active_lines: activeLines,
-            status: "OK",
-            source: "TMB API",
-            timestamp: new Date().toISOString()
-        };
-
-        // Guardar en caché
-        cache.data = payload;
-        cache.lastUpdate = NOW;
-
-        res.json(payload);
+        res.json({
+            status: "Online",
+            congestion: congestion,
+            activeLines: response.data.features.length,
+            serverTime: `${hour}:00`,
+            source: "TMB API"
+        });
 
     } catch (error) {
-        console.error("❌ Error TMB API:", error.message);
-        // Respuesta de contingencia
-        res.json({
-            active_lines: 5,
-            status: "ERROR_FALLBACK",
-            error: error.message
-        });
+        console.error("❌ Error TMB:", error.message);
+        res.json({ status: "Error", congestion: 5, activeLines: 8 });
     }
 });
 

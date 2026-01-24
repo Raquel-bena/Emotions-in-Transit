@@ -1,73 +1,43 @@
-// server/index.js
+// UBICACIÓN: server/index.js
+
+// 1. Configuración inicial
+require('dotenv').config({ path: '../.env' }); // Busca las claves en la carpeta raíz
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
 
+// 2. Importar tus rutas (La lógica separada)
+// Asegúrate de tener el archivo en server/routes/tmb.js
+const tmbRoutes = require('./routes/tmb');
+// const weatherRoutes = require('./routes/weather'); // Descomenta cuando crees este archivo
+
+// 3. Iniciar la App
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Permitir conexiones externas
-app.use(cors());
+// 4. Middlewares (Seguridad y formato)
+app.use(cors()); // Permite que p5.js se conecte en desarrollo
+app.use(express.json()); // Permite entender datos JSON
 
-// --- PROXY API: TRANSPORTE (TMB) ---
-app.get('/api/transport', async (req, res) => {
-    // 1. Obtener claves (desde variables de entorno o fallback)
-    const APP_ID = process.env.TMB_APP_ID || "daf62db0";
-    const APP_KEY = process.env.TMB_APP_KEY || "5e4adb21bdfeda65a91e36cc2c12b7df";
-    
-    const url = `https://api.tmb.cat/v1/transit/linies/metro?app_id=${APP_ID}&app_key=${APP_KEY}`;
+// 5. RUTAS DE LA API (El puente de datos)
+// Todo lo que vaya a /api/tmb lo gestiona el archivo tmb.js
+app.use('/api/tmb', tmbRoutes);
 
-    try {
-        // 2. Pedir datos a TMB (Backend to Backend)
-        const response = await fetch(url);
-        
-        if (!response.ok) throw new Error(`Error TMB: ${response.statusText}`);
-        
-        const data = await response.json();
+// Aquí añadirás las otras en el futuro:
+// app.use('/api/weather', weatherRoutes);
 
-        // 3. Calcular congestión (Lógica de hora punta)
-        // Render usa hora UTC. Sumamos 1 o 2 horas aprox para BCN.
-        const now = new Date();
-        const hour = (now.getHours() + 1) % 24; 
-        
-        let congestion = 0;
-        // Hora punta (7-9am y 5-7pm)
-        if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
-            congestion = Math.floor(Math.random() * 3) + 7; // Alta (7-9)
-        } else {
-            congestion = Math.floor(Math.random() * 5) + 1; // Baja/Media (1-5)
-        }
 
-        // 4. Responder al Frontend con JSON limpio
-        res.json({
-            activeLines: data.features.length,
-            congestion: congestion,
-            status: "Online (Proxy Active)",
-            serverTime: `${hour}:00`
-        });
-
-    } catch (error) {
-        console.error("Error en Proxy TMB:", error);
-        // Fallback para que la web no rompa
-        res.json({ 
-            activeLines: 8, 
-            congestion: 5, 
-            status: "Offline (Ghost Mode)" 
-        });
-    }
-});
-
-// --- SERVIR FRONTEND (VITE) ---
-// Importante: Servimos la carpeta 'dist' que está un nivel arriba
+// 6. SERVIDOR WEB (Para cuando lo subas a Render)
+// Sirve los archivos estáticos generados por Vite (carpeta dist)
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// Cualquier otra ruta devuelve el index.html
+// Cualquier petición que no sea API, devuelve la web principal (index.html)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-// --- INICIAR ---
+// 7. Arrancar el servidor
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor listo en puerto ${PORT}`);
+  console.log(`✅ Servidor Emotions (in) Transit corriendo en puerto ${PORT}`);
+  console.log(`📡 Ruta TMB disponible en: http://localhost:${PORT}/api/tmb/transport`);
 });
