@@ -1,43 +1,49 @@
 // UBICACIÓN: server/index.js
 
-// 1. Configuración inicial
-require('dotenv').config({ path: '../.env' }); // Busca las claves en la carpeta raíz
+// 1. Configuración de Entorno
+// Busca el archivo .env en la carpeta raíz del proyecto (un nivel arriba)
+require('dotenv').config({ path: '../.env' }); 
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
-// 2. Importar tus rutas (La lógica separada)
-// Asegúrate de tener el archivo en server/routes/tmb.js
+// 2. Importar las Rutas (Los sentidos de la ciudad)
+// Asegúrate de que estos archivos existan en server/routes/
 const tmbRoutes = require('./routes/tmb');
-// const weatherRoutes = require('./routes/weather'); // Descomenta cuando crees este archivo
+const weatherRoutes = require('./routes/weather');
+const noiseRoutes = require('./routes/noise'); 
 
-// 3. Iniciar la App
+// 3. Inicializar App
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 4. Middlewares (Seguridad y formato)
-app.use(cors()); // Permite que p5.js se conecte en desarrollo
-app.use(express.json()); // Permite entender datos JSON
+// 4. Middlewares (Configuración de seguridad y datos)
+app.use(cors()); // Permite que p5.js (desde otro puerto) pida datos sin bloqueos
+app.use(express.json()); // Permite entender datos en formato JSON
 
-// 5. RUTAS DE LA API (El puente de datos)
-// Todo lo que vaya a /api/tmb lo gestiona el archivo tmb.js
+// 5. Conectar las APIs (El puente de datos)
+// Definimos las direcciones web donde vivirán tus datos
 app.use('/api/tmb', tmbRoutes);
+app.use('/api/weather', weatherRoutes);
+app.use('/api/noise', noiseRoutes);
 
-// Aquí añadirás las otras en el futuro:
-// app.use('/api/weather', weatherRoutes);
-
-
-// 6. SERVIDOR WEB (Para cuando lo subas a Render)
-// Sirve los archivos estáticos generados por Vite (carpeta dist)
+// 6. Servir el Frontend (Para Producción en Render)
+// Esto sirve los archivos que genera Vite en la carpeta 'dist'
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// Cualquier petición que no sea API, devuelve la web principal (index.html)
+// "Catch-all": Cualquier petición que no sea una API, devuelve la página web
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-// 7. Arrancar el servidor
+// 7. Arrancar el Servidor
 app.listen(PORT, () => {
   console.log(`✅ Servidor Emotions (in) Transit corriendo en puerto ${PORT}`);
-  console.log(`📡 Ruta TMB disponible en: http://localhost:${PORT}/api/tmb/transport`);
+  console.log(`-------------------------------------------------------------`);
+  console.log(`📡 Endpoints activos:`);
+  console.log(`   - 🚇 Transporte: http://localhost:${PORT}/api/tmb/transport`);
+  console.log(`   - 🌦️  Clima:      http://localhost:${PORT}/api/weather/current`);
+  console.log(`   - 🔊 Ruido:      http://localhost:${PORT}/api/noise/current`);
+  console.log(`-------------------------------------------------------------`);
 });

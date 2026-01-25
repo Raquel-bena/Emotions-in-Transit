@@ -1,117 +1,117 @@
-import p5 from 'p5';
-// Importa Tone si lo necesitas, si no, coméntalo
-// import * as Tone from 'tone'; 
+// UBICACIÓN: src/sketch.js
 
-// --- MODO INSTANCIA DE P5 ---
-// En lugar de window.setup, creamos una "instancia" llamada 's'
-const sketch = (p) => {
+let weatherData = null;
+let transportData = null;
+let noiseData = null;
+let loading = true;
 
-  // Variables del sketch
-  let transportData = { congestion: 0, activeLines: 0, status: 'connecting...' };
-  let currentWaveAmp = 20;
-  let targetWaveAmp = 20;
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api' 
+  : '/api';
 
-  // --- SETUP ---
-  p.setup = function() {
-    // Usamos p.createCanvas en lugar de createCanvas
-    p.createCanvas(p.windowWidth, p.windowHeight);
-    p.textFont('Courier New');
-    
-    // 1. Cargar datos iniciales
-    fetchTransportData();
-    
-    // 2. Actualizar cada 5 minutos
-    setInterval(fetchTransportData, 300000);
-  };
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textAlign(CENTER, CENTER);
+  fetchCityData();
+}
 
-  // --- DRAW ---
-  p.draw = function() {
-    p.background(30, 30, 35); // Fondo oscuro
+async function fetchCityData() {
+  try {
+    // Pedimos los 3 datos en paralelo (más rápido)
+    const [weatherRes, tmbRes, noiseRes] = await Promise.all([
+      fetch(`${API_URL}/weather/current`),
+      fetch(`${API_URL}/tmb/transport`),
+      fetch(`${API_URL}/noise/current`)
+    ]);
 
-    // Suavizado
-    currentWaveAmp = p.lerp(currentWaveAmp, targetWaveAmp, 0.05);
+    weatherData = await weatherRes.json();
+    transportData = await tmbRes.json();
+    noiseData = await noiseRes.json();
 
-    drawHeader();
-    drawTransportSection();
-    drawVisuals();
-  };
+    console.log("Datos recibidos:", { weatherData, transportData, noiseData });
+    loading = false;
+  } catch (error) {
+    console.error("❌ Error de conexión:", error);
+    loading = false;
+  }
+}
 
-  // --- RESIZE ---
-  p.windowResized = function() {
-    p.resizeCanvas(p.windowWidth, p.windowHeight);
-  };
+function draw() {
+  background(20);
 
-  // --- FUNCIONES DE DIBUJO (Internas) ---
+  if (loading) {
+    fill(255);
+    text("Sincronizando con la ciudad...", width/2, height/2);
+    return;
+  }
+
+  // --- 1. CAPA DE RUIDO (Vibración del fondo) ---
+  // Si hay mucho ruido, la pantalla tiembla
+  let shake = 0;
+  if (noiseData) {
+    // Mapeamos dB (aprox 40-90) a vibración (0-5px)
+    shake = map(noiseData.db, 40, 90, 0, 5, true); 
+  }
   
-  function drawHeader() {
-    p.fill(255);
-    p.noStroke();
-    p.textSize(16);
-    p.textAlign(p.LEFT, p.TOP);
-    p.text("EMOTIONS IN TRANSIT [BETA]", 20, 20);
+  push();
+  translate(random(-shake, shake), random(-shake, shake)); // Efecto terremoto
+
+  // --- 2. CAPA DE CLIMA (Atmósfera central) ---
+  if (weatherData) {
+    // Temperatura define el color
+    let r = map(weatherData.temp, 0, 35, 50, 255);
+    let b = map(weatherData.temp, 0, 35, 255, 50);
+    
+    noStroke();
+    // Efecto de "respiración" suave
+    let pulse = sin(millis() / 1000) * 10;
+    
+    fill(r, 50, b, 100); // Color semitransparente
+    circle(width/2, height/2, 300 + pulse);
+    
+    fill(255);
+    textSize(40);
+    text(`${weatherData.temp}°C`, width/2, height/2);
+    textSize(16);
+    text(weatherData.condition, width/2, height/2 + 40);
   }
 
-  function drawTransportSection() {
-    let yPos = p.height - 100;
+  // --- 3. CAPA DE TRANSPORTE (Satélites) ---
+  if (transportData) {
+    let congestion = transportData.congestion;
+    let speed = map(congestion, 1, 10, 0.02, 0.15);
     
-    p.stroke(255, 50);
-    p.line(20, yPos - 20, p.width - 20, yPos - 20);
+    noFill();
+    stroke(255, 200, 0);
+    strokeWeight(2);
     
-    p.noStroke();
-    p.fill(200);
-    p.textSize(14);
-    p.text(`METRO BCN | STATUS: ${transportData.status}`, 20, yPos);
-    
-    p.fill(100, 255, 200);
-    p.text(`ACTIVE LINES: ${transportData.activeLines}`, 20, yPos + 25);
-    
-    // Color dinámico
-    let congestionColor = p.lerpColor(p.color(100, 255, 100), p.color(255, 50, 50), transportData.congestion / 10);
-    p.fill(congestionColor);
-    p.text(`CONGESTION LEVEL: ${transportData.congestion}/10`, 200, yPos + 25);
-  }
+    // Anillo orbital
+    circle(width/2, height/2, 450);
 
-  function drawVisuals() {
-    p.noFill();
-    p.strokeWeight(2);
+    // Partículas de tráfico
+    fill(255, 200, 0);
+    noStroke();
     
-    let centerX = p.width / 2;
-    let centerY = p.height / 2;
-
-    for (let i = 0; i < 5; i++) {
-      p.stroke(255, 255, 255, 150 - (i * 30));
-      p.beginShape();
-      for (let x = -300; x < 300; x += 10) {
-        let noiseVal = p.noise(x * 0.01, p.frameCount * 0.01 + i);
-        let y = p.sin(x * 0.02 + p.frameCount * 0.05) * (currentWaveAmp * noiseVal);
-        p.vertex(centerX + x, centerY + y);
-      }
-      p.endShape();
-    }
-  }
-
-  // --- FETCH (Lógica de datos) ---
-  async function fetchTransportData() {
-    try {
-      // Importante: La ruta al servidor
-      let response = await fetch('/api/transport');
-      let data = await response.json();
+    let time = millis() * speed;
+    for(let i = 0; i < congestion; i++) {
+      let angle = (TWO_PI / congestion) * i + time;
+      let x = width/2 + cos(angle) * 225; // Radio 225 (mitad de 450)
+      let y = height/2 + sin(angle) * 225;
       
-      transportData.activeLines = data.activeLines;
-      transportData.congestion = data.congestion;
-      transportData.status = "ONLINE";
-
-      // Actualizamos la variable de la onda con map de p5
-      targetWaveAmp = p.map(data.congestion, 0, 10, 20, 200);
-      
-      console.log("Datos recibidos:", data);
-    } catch (e) {
-      console.warn("Offline Mode", e);
-      transportData.status = "OFFLINE (GHOST)";
+      // El tamaño del transporte cambia con el RUIDO también
+      let size = 20 + shake * 5; 
+      circle(x, y, size);
     }
+    
+    // Info abajo
+    fill(150);
+    noStroke();
+    text(`Tráfico: ${congestion}/10  |  Ruido: ${noiseData ? noiseData.db.toFixed(1) : '?'} dB`, width/2, height - 50);
   }
-};
 
-// --- INICIALIZAR P5 ---
-// Esto es lo que arranca todo y conecta con el index.html
-new p5(sketch);
+  pop(); // Fin del efecto temblor
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
