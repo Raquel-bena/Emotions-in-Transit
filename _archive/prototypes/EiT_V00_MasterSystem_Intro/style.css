@@ -1,0 +1,17 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* Color de fondo de la página web, no del canvas */
+  background-color: #1a1a1a; 
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas {
+  display: block;
+  /* Sombra sutil para separar el diseño del fondo del navegador */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
