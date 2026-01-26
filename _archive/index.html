@@ -1,312 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotions in Transit | Urban Pulse</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-deep: #050508;
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-vivid: #7000ff;
-            --accent-flow: #00f2ff;
-            --text-main: #e2e2e7;
-            --text-dim: #9494b8;
-            --panic-red: #ff3366;
-            --calm-green: #00f5a0;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-deep);
-            color: var(--text-main);
-            min-height: 100vh;
-            padding: 40px 20px;
-            overflow-x: hidden;
-            /* Efecto de luces de tránsito al fondo */
-            background-image: 
-                radial-gradient(circle at 10% 10%, rgba(112, 0, 255, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(0, 242, 255, 0.1) 0%, transparent 40%);
-        }
-
-        .container { max-width: 1200px; margin: 0 auto; }
-
-        /* Header con Estilo Inmersivo */
-        .header {
-            text-align: left;
-            margin-bottom: 60px;
-            border-left: 4px solid var(--accent-vivid);
-            padding-left: 24px;
-        }
-
-        .brand-badge {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            color: var(--accent-flow);
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        h1 {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: 800;
-            line-height: 1;
-            background: linear-gradient(to right, #fff, var(--text-dim));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Grid de Emociones */
-        .emotions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 25px;
-        }
-
-        .card {
-            background: var(--glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 32px;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card:hover {
-            transform: translateY(-8px);
-            border-color: var(--accent-flow);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-
-        .card-type {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: var(--text-dim);
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .card-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        /* Métricas */
-        .stat-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 25px;
-        }
-
-        .stat-item {
-            background: rgba(255,255,255,0.03);
-            padding: 15px;
-            border-radius: 16px;
-        }
-
-        .stat-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        .stat-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 20px;
-            font-weight: 600;
-        }
-
-        /* Mood Bar */
-        .mood-container {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--glass-border);
-        }
-
-        .mood-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .progress-track {
-            height: 6px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-vivid), var(--accent-flow));
-            transition: width 1s ease-in-out;
-        }
-
-        .warning-fill { background: linear-gradient(90deg, #ff3366, #ff8000); }
-
-        .impact-text {
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--text-dim);
-            font-style: italic;
-        }
-
-        @media (max-width: 600px) {
-            .emotions-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Document</title>
+     <script src="https://unpkg.com/h264-mp4-encoder/embuild/dist/h264-mp4-encoder.web.js"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
 </head>
+
 <body>
+     <script>
+          const ancho_inicial = 640
+          const alto_inicial = 360
+          
+          let botón_de_grabación
+          let encoder
+          let recording = false
 
-<div class="container">
-    <header class="header">
-        <span class="brand-badge">Barcelona Live Analysis</span>
-        <h1>Emotions in Transit</h1>
-        <p style="color: var(--text-dim); margin-top: 15px; max-width: 600px;">
-            Traducción de variables ambientales a estados psicogeográficos. Cómo el flujo de la ciudad respira y siente.
-        </p>
-    </header>
+          function preload() {
+               HME.createH264MP4Encoder().then(enc => {
+                    encoder = enc
+                    encoder.outputFilename = (random() + "").replace("0.", "jeffAporta")
+                    encoder.width = ancho_inicial
+                    encoder.height = alto_inicial
+                    encoder.frameRate = 60
+                    encoder.kbps = 50000
+                    encoder.groupOfPictures = 10
+                    encoder.initialize()
+               })
+          }
 
-    <div class="emotions-grid">
-        <div class="card">
-            <div class="card-type">
-                <span>STIMULUS: AUDITORY</span>
-                <span>0.5s DELAY</span>
-            </div>
-            <div class="card-title">🔊 Auditory Stress</div>
-            <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label">Current Intensity</span>
-                    <span class="stat-value">57.5 <small>dBA</small></span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Instability (σ)</span>
-                    <span class="stat-value" style="color: var(--panic-red);">High</span>
-                </div>
-            </div>
-            <div class="mood-container">
-                <div class="mood-label">
-                    <span>Cortisol Trigger Potential</span>
-                    <span style="color: var(--panic-red);">104%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill warning-fill" style="width: 104%;"></div>
-                </div>
-                <p class="impact-text" style="margin-top:15px;">
-                    "Los picos constantes fragmentan la atención urbana, generando un estado de alerta involuntario."
-                </p>
-            </div>
-        </div>
+          function setup() {
+               createCanvas(ancho_inicial, alto_inicial)
 
-        <div class="card">
-            <div class="card-type">
-                <span>STIMULUS: RESPIRATORY</span>
-                <span>REAL-TIME</span>
-            </div>
-            <div class="card-title">🌫️ Invisible Anxiety</div>
-            <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label">PM2.5 Level</span>
-                    <span class="stat-value">14.0 <small>µg/m³</small></span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Air Quality Index</span>
-                    <span class="stat-value" style="color: var(--calm-green);">Fair</span>
-                </div>
-            </div>
-            <div class="mood-container">
-                <div class="mood-label">
-                    <span>Lung-to-Brain Impact</span>
-                    <span>93%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" style="width: 93%;"></div>
-                </div>
-                <p class="impact-text" style="margin-top:15px;">
-                    "Lo que no se ve, se siente. Partículas ultrafinas que correlacionan con la fatiga cognitiva."
-                </p>
-            </div>
-        </div>
+               botón_de_grabación = createButton('Grabar')
+               botón_de_grabación.mousePressed(() => {
+                    recording = botón_de_grabación.html() == "Grabar"
+                    if (recording) {
+                         botón_de_grabación.html("Detener")
+                    } else {
+                         botón_de_grabación.html("Grabar")
+                         finalizarGrabación()
+                    }
 
-        <div class="card" style="border-color: var(--accent-vivid);">
-            <div class="card-type">
-                <span>SYSTEM DRIVER</span>
-                <span>6 STOPS SYNC</span>
-            </div>
-            <div class="card-title">🚇 Collective Flow</div>
-            <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label">Demand Index</span>
-                    <span class="stat-value">46.6</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">System Pulse</span>
-                    <span class="stat-value" style="color: var(--accent-flow);">Active</span>
-                </div>
-            </div>
-            <div class="mood-container">
-                <div class="mood-label">
-                    <span>Density Saturation</span>
-                    <span>68%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" style="width: 68%; background: var(--accent-vivid);"></div>
-                </div>
-                <p class="impact-text" style="margin-top:15px;">
-                    "El latido de la red TMB. La variabilidad σ=29.7 marca el ritmo del agotamiento colectivo."
-                </p>
-            </div>
-        </div>
+               })
 
-        <div class="card">
-            <div class="card-type">
-                <span>STIMULUS: VISUAL</span>
-                <span>CALIMA SENSITIVE</span>
-            </div>
-            <div class="card-title">💨 Visual Clarity</div>
-            <div class="stat-group">
-                <div class="stat-item">
-                    <span class="stat-label">PM10 Coarse</span>
-                    <span class="stat-value">19.6 <small>µg/m³</small></span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Sky Opacity</span>
-                    <span class="stat-value">Low</span>
-                </div>
-            </div>
-            <div class="mood-container">
-                <div class="mood-label">
-                    <span>Environmental Optimism</span>
-                    <span style="color: var(--calm-green);">High</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill" style="width: 43%; background: var(--calm-green);"></div>
-                </div>
-                <p class="impact-text" style="margin-top:15px;">
-                    "La nitidez del horizonte urbano influye directamente en la percepción de bienestar y apertura."
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
+               textSize(128)
+               textAlign(CENTER, CENTER)
+               pixelDensity(1)
+               smooth()
+          }
 
+          function draw() {
+               background(220)
+               text(frameCount, width / 2, height / 2)
+               grabarFotograma()
+          }
+
+          function grabarFotograma() {
+               if (recording) {
+                    encoder.addFrameRgba(drawingContext.getImageData(0, 0, encoder.width, encoder.height).data);
+               }
+          }
+
+          function finalizarGrabación() {
+               recording = false
+               console.log('recording stopped')
+
+               encoder.finalize()
+               const uint8Array = encoder.FS.readFile(encoder.outputFilename);
+               const anchor = document.createElement('a')
+               anchor.href = URL.createObjectURL(new Blob([uint8Array], { type: 'video/mp4' }))
+               anchor.download = encoder.outputFilename
+               anchor.click()
+               encoder.delete()
+
+               preload()
+          }
+     </script>
 </body>
+
 </html>
